@@ -1,0 +1,9 @@
+{
+  "tasks": [
+    {
+      "name": "fmt",
+      "cmd": "stylua lua/**/*.lua ftplugin/*.lua init.lua",
+      "close_on_exit": true
+    }
+  ]
+}
