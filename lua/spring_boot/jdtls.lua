@@ -11,7 +11,7 @@ M.execute_command = function(command, param)
     arguments = param,
   })
   if err then
-    vim.notify("Error executeCommand: " .. command, vim.log.levels.ERROR)
+    print("Error executeCommand: " .. command .. "\n" .. vim.inspect(err))
   end
   return resp
 end

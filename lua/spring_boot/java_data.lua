@@ -7,9 +7,7 @@ M.register_java_data_service = function(client)
   end
 
   client.handlers["sts/javadocHoverLink"] = function(_, result)
-    -- TODO
-    print("sts/javadocHoverLink")
-    print(vim.inspect(result))
+    return jdtls.execute_command("sts.java.javadocHoverLink", result)
   end
 
   client.handlers["sts/javaLocation"] = function(_, result)
@@ -17,9 +15,7 @@ M.register_java_data_service = function(client)
   end
 
   client.handlers["sts/javadoc"] = function(_, result)
-    -- TODO
-    print("sts/javadoc")
-    print(vim.inspect(result))
+    return jdtls.execute_command("sts.java.javadoc", result)
   end
 
   client.handlers["sts/javaSearchTypes"] = function(_, result)
