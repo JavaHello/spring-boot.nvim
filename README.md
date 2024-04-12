@@ -1,4 +1,4 @@
-# Spring Boot LS
+# Spring Boot Nvim
 
 参考 [VScode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot) 插件, 将它的部分功能集成到 `Neovim` 中。
 
