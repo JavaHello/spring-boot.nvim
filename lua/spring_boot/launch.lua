@@ -108,6 +108,11 @@ local ls_config = {
 classpath.register_classpath_service(ls_config)
 java_data.register_java_data_service(ls_config)
 
+vim.lsp.commands["vscode-spring-boot.ls.start"] = function(_, _, _)
+  M.enable_classpath_listening()
+  return {}
+end
+
 ls_config.handlers["sts/highlight"] = function() end
 ls_config.handlers["sts/moveCursor"] = function(err, result, ctx, config)
   -- TODO: move cursor

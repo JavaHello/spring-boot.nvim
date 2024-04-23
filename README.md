@@ -40,16 +40,11 @@
 详细配置参考[nvim-jdtls](https://github.com/mfussenegger/nvim-jdtls)项目
 
 ```lua
-local jdtls_config = {}
-local bundles = {}
+local jdtls_config = {
+  bundles = {}
+}
 -- 添加 spring-boot jdtls 扩展 jar 包
-vim.list_extend(bundles, require("spring_boot").java_extensions())
-
-
--- 启用 spring-boot classpath_listening
-jdtls_config["on_init"] = function(client, _)
-  require("spring_boot").enable_classpath_listening()
-end
+vim.list_extend(jdtls_config.bundles, require("spring_boot").java_extensions())
 ```
 
 ## 使用

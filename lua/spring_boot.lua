@@ -11,8 +11,4 @@ M.java_extensions = function()
   return launch.jdt_extensions_jars()
 end
 
-M.enable_classpath_listening = function()
-  launch.enable_classpath_listening()
-end
-
 return M
