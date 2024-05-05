@@ -23,6 +23,7 @@
       },
     }
   ```
+- [Visual Studio Code](https://code.visualstudio.com/) 中安装[VScode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot)(可选的)
 
 ## 配置
 
