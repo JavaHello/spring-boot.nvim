@@ -120,20 +120,21 @@ ls_config.handlers["sts/moveCursor"] = function(err, result, ctx, config)
 end
 
 M.setup = function(opts)
-  local capabilities = opts.capabilities or vim.lsp.protocol.make_client_capabilities()
+  config = opts
+  local capabilities = config.server.capabilities or vim.lsp.protocol.make_client_capabilities()
   capabilities.workspace = {
     executeCommand = { value = true },
   }
   ls_config.capabilities = capabilities
-  local rt_dir = opts.root_dir or root_dir()
-  ls_config.cmd = opts.cmd or bootls_cmd(rt_dir)
+  local rt_dir = config.server.root_dir or root_dir()
+  ls_config.cmd = config.server.cmd or bootls_cmd(rt_dir)
   ls_config.root_dir = rt_dir
   ls_config.init_options.workspaceFolders = rt_dir
-  if opts.on_attach then
-    ls_config.on_attach = opts.on_attach
+  if config.server.on_attach then
+    ls_config.on_attach = config.server.on_attach
   end
-  if opts.on_init then
-    ls_config.on_init = opts.on_init
+  if config.server.on_init then
+    ls_config.on_init = config.server.on_init
   end
   local group = vim.api.nvim_create_augroup("spring_boot_ls", { clear = true })
   vim.api.nvim_create_autocmd({ "FileType" }, {

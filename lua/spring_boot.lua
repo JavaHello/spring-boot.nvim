@@ -1,10 +1,9 @@
 local M = {}
 
 local launch = require("spring_boot.launch")
-local config = require("spring_boot.config")
 M.setup = function(opts)
-  vim.tbl_extend("force", config, opts)
-  launch.setup(config.server)
+  local config = vim.tbl_deep_extend("force", require("spring_boot.config"), opts)
+  launch.setup(config)
 end
 
 M.java_extensions = function()
