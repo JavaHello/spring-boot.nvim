@@ -129,6 +129,12 @@ M.setup = function(opts)
   ls_config.cmd = opts.cmd or bootls_cmd(rt_dir)
   ls_config.root_dir = rt_dir
   ls_config.init_options.workspaceFolders = rt_dir
+  if opts.on_attach then
+    ls_config.on_attach = opts.on_attach
+  end
+  if opts.on_init then
+    ls_config.on_init = opts.on_init
+  end
   local group = vim.api.nvim_create_augroup("spring_boot_ls", { clear = true })
   vim.api.nvim_create_autocmd({ "FileType" }, {
     group = group,
