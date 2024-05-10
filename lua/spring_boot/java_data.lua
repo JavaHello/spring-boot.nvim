@@ -7,9 +7,8 @@ M.register_java_data_service = function(client)
   end
 
   client.handlers["sts/javadocHoverLink"] = function(_, result)
-    -- TODO: https://github.com/spring-projects/sts4/issues/1229
-    return {}
-    -- return jdtls.execute_command("sts.java.javadocHoverLink", result)
+    -- fix: https://github.com/spring-projects/sts4/issues/1229
+    return jdtls.execute_command("sts.java.javadocHoverLink", result)
   end
 
   client.handlers["sts/javaLocation"] = function(_, result)
