@@ -53,6 +53,7 @@ end
 local function bootls_cmd(rt_dir)
   local boot_path = bootls_path()
   if not boot_path then
+    vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
     return
   end
   local boot_classpath = {}
@@ -128,6 +129,9 @@ M.setup = function(opts)
   ls_config.capabilities = capabilities
   local rt_dir = config.server.root_dir or root_dir()
   ls_config.cmd = config.server.cmd or bootls_cmd(rt_dir)
+  if not ls_config.cmd then
+    return
+  end
   ls_config.root_dir = rt_dir
   ls_config.init_options.workspaceFolders = rt_dir
   if config.server.on_attach then
