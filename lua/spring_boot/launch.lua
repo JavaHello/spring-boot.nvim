@@ -6,7 +6,11 @@ local java_data = require("spring_boot.java_data")
 local util = require("spring_boot.util")
 
 local root_dir = function()
-  return require("jdtls.setup").find_root({ ".git", "mvnw", "gradlew" }) or vim.loop.cwd()
+  local ok, jdtls = pcall(require, "jdtls.setup")
+  if ok then
+    return jdtls.find_root({ ".git", "mvnw", "gradlew" }) or vim.loop.cwd()
+  end
+  return vim.loop.cwd()
 end
 
 local bootls_path = function()
@@ -19,35 +23,20 @@ local bootls_path = function()
   end
 end
 
-M.jdt_extensions_jars = function()
-  local bundles = {}
-  local function bundle_jar(path)
-    for _, jar in ipairs(config.jdt_extensions_jars) do
-      if vim.endswith(path, jar) then
-        return true
-      end
-    end
-  end
-  local spring_boot_path = config.jdt_extensions_path or vscode.find_one("/vmware.vscode-spring-boot-*/jars")
-  if spring_boot_path then
-    for _, bundle in ipairs(vim.split(vim.fn.glob(spring_boot_path .. "/*.jar"), "\n")) do
-      if bundle_jar(bundle) then
-        table.insert(bundles, bundle)
-      end
-    end
-  end
-  return bundles
-end
-
 M.enable_classpath_listening = function()
-  util.execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
+  util.boot_execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
 end
 
 local logfile = function(rt_dir)
+  local lf
   if config.log_file ~= nil then
-    return config.log_file(rt_dir)
+    if type(config.log_file) == "function" then
+      lf = config.log_file(rt_dir)
+    elseif type(config.log_file) == "string" then
+      lf = config.log_file == "" and nil or config.log_file
+    end
   end
-  return "/dev/null"
+  return lf or "/dev/null"
 end
 
 local function bootls_cmd(rt_dir)
@@ -120,8 +109,7 @@ ls_config.handlers["sts/moveCursor"] = function(err, result, ctx, config)
   return { applied = true }
 end
 
-M.setup = function(opts)
-  config = opts
+M.setup = function(_)
   local capabilities = config.server.capabilities or vim.lsp.protocol.make_client_capabilities()
   capabilities.workspace = {
     executeCommand = { value = true },

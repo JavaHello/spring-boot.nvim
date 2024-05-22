@@ -28,44 +28,42 @@ M.java_bin = function()
 end
 
 M.get_client = function(name)
-  local clients = vim.lsp.get_active_clients({ name = name })
+  local clients = vim.lsp.get_clients({ name = name })
   if clients and #clients > 0 then
     return clients[1]
   end
+  vim.notify("Client not found: " .. name, vim.log.levels.ERROR)
   return nil
 end
 
 M.get_spring_boot_client = function()
   return M.get_client("spring-boot")
 end
-
-M.execute_command = function(command, param, callback)
-  local bootls_client = M.get_spring_boot_client()
-  if bootls_client == nil then
-    vim.notify("spring-boot client not found", vim.log.levels.ERROR)
-    return
+M.boot_execute_command = function(command, param, callback)
+  local err, resp = M.execute_command(M.get_spring_boot_client(), command, param, callback)
+  if err then
+    print("Error executeCommand: " .. command .. "\n" .. vim.inspect(err))
   end
-  local cb = callback
-    or function(err, _)
-      if err then
-        vim.notify("Error executeCommand: " .. command, vim.log.levels.ERROR)
+  return resp
+end
+
+M.execute_command = function(client, command, param, callback)
+  local co
+  if not callback then
+    co = coroutine.running()
+    if co then
+      callback = function(err, resp)
+        coroutine.resume(co, err, resp)
       end
     end
-  bootls_client.request("workspace/executeCommand", {
-    command = command,
-    arguments = param,
-  }, cb)
-end
-M.execute_command_sync = function(command, param)
-  local bootls_client = M.get_spring_boot_client()
-  if bootls_client == nil then
-    vim.notify("spring-boot client not found", vim.log.levels.ERROR)
-    return
   end
-  return bootls_client.request_sync("workspace/executeCommand", {
+  client.request("workspace/executeCommand", {
     command = command,
     arguments = param,
-  })
+  }, callback, nil)
+  if co then
+    return coroutine.yield()
+  end
 end
 
 M.is_application_yml_file = function(filename)

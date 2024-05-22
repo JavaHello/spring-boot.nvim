@@ -1,3 +1,5 @@
+[English](./README_en.md)
+
 # Spring Boot Nvim
 
 参考 [VScode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot) 插件, 将它的部分功能集成到 `Neovim` 中。
@@ -18,7 +20,7 @@
       "JavaHello/spring-boot.nvim",
       ft = "java",
       dependencies = {
-        "mfussenegger/nvim-jdtls",
+        "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
         "ibhagwan/fzf-lua", -- 可选
       },
     }
@@ -30,11 +32,26 @@
 ### `spring-boot.nvim`
 
 ```lua
-  require('spring_boot').setup({
-    ls_path = nil, -- 默认依赖 vscode-spring-boot 插件, 如果没有安装 vscode 插件，可以指定路径
-    jdt_extensions_path = nil, -- 默认依赖 vscode-spring-boot 插件
-  })
+  require('spring_boot').setup({})
 ```
+
+- 默认配置
+  ```lua
+    vim.g.spring_boot = {
+      jdt_extensions_path = nil, -- 默认使用 ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
+      jdt_extensions_jars = {
+        "io.projectreactor.reactor-core.jar",
+        "org.reactivestreams.reactive-streams.jar",
+        "jdt-ls-commons.jar",
+        "jdt-ls-extension.jar",
+      },
+    }
+    require('spring_boot').setup({
+      ls_path = nil, -- 默认使用 ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
+      jdtls_name = "jdtls",
+      log_file = nil,
+    })
+  ```
 
 ### `nvim-jdtls`
 
@@ -46,6 +63,16 @@ local jdtls_config = {
 }
 -- 添加 spring-boot jdtls 扩展 jar 包
 vim.list_extend(jdtls_config.bundles, require("spring_boot").java_extensions())
+```
+
+### `nvim-lspconfig` (未测试)
+
+```lua
+require("lspconfig").jdtls.setup {
+  init_options = {
+    bundles = require("spring_boot").java_extensions(),
+  },
+}
 ```
 
 ## 使用
