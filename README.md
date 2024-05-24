@@ -65,7 +65,7 @@ local jdtls_config = {
 vim.list_extend(jdtls_config.bundles, require("spring_boot").java_extensions())
 ```
 
-### `nvim-lspconfig` (未测试)
+### `nvim-lspconfig`
 
 ```lua
 require('spring_boot').init_lsp_commands()
