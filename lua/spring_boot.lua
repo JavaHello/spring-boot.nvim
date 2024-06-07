@@ -5,6 +5,7 @@ vim.g.spring_boot = {
     "org.reactivestreams.reactive-streams.jar",
     "jdt-ls-commons.jar",
     "jdt-ls-extension.jar",
+    "sts-gradle-tooling.jar",
   },
 }
 
