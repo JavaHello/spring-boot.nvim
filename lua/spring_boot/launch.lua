@@ -140,6 +140,11 @@ M.setup = function(_)
       if vim.endswith(e.file, "pom.xml") then
         return
       end
+      if vim.endswith(e.file, ".yaml") or vim.endswith(e.file, ".yml") then
+        if not util.is_application_yml_file(e.file) then
+          return
+        end
+      end
       vim.lsp.start(ls_config)
     end,
   })
