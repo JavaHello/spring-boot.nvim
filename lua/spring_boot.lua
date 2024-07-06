@@ -1,5 +1,6 @@
 vim.g.spring_boot = {
   jdt_extensions_path = nil,
+  -- https://github.com/spring-projects/sts4/blob/7d3d91ecfa6087ae2d0e0f595da61ce8f52fed96/vscode-extensions/vscode-spring-boot/package.json#L33
   jdt_extensions_jars = {
     "io.projectreactor.reactor-core.jar",
     "org.reactivestreams.reactive-streams.jar",
