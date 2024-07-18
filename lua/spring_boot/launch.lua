@@ -39,7 +39,7 @@ local logfile = function(rt_dir)
   return lf or "/dev/null"
 end
 
-local function bootls_cmd(rt_dir)
+local function bootls_cmd(rt_dir, java_cmd)
   local boot_path = bootls_path()
   if not boot_path then
     vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
@@ -50,7 +50,7 @@ local function bootls_cmd(rt_dir)
   table.insert(boot_classpath, boot_path .. "/BOOT-INF/lib/*")
 
   local cmd = {
-    util.java_bin(),
+    java_cmd or util.java_bin(),
     "-XX:TieredStopAtLevel=1",
     "-Xmx1G",
     "-XX:+UseZGC",
@@ -116,7 +116,7 @@ M.setup = function(_)
   }
   ls_config.capabilities = capabilities
   local rt_dir = config.server.root_dir or root_dir()
-  ls_config.cmd = config.server.cmd or bootls_cmd(rt_dir)
+  ls_config.cmd = config.server.cmd or bootls_cmd(rt_dir, config.java_cmd)
   if not ls_config.cmd then
     return
   end

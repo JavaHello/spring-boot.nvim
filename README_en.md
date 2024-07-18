@@ -46,6 +46,7 @@ Integrate some features from the [VScode Spring Boot](https://marketplace.visual
       ls_path = nil, -- defaults to ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
       jdtls_name = "jdtls",
       log_file = nil,
+      java_cmd = nil, -- by default will try to get java 17+ path by using JAVA_HOME. If set, this will use the value here as the java command
     })
   ```
 
