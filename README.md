@@ -50,6 +50,7 @@
       ls_path = nil, -- 默认使用 ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
       jdtls_name = "jdtls",
       log_file = nil,
+      java_cmd = nil,
     })
   ```
 
