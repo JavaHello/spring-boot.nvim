@@ -2,6 +2,7 @@ local M = {}
 local jdtls = require("spring_boot.jdtls")
 
 M.register_java_data_service = function(client)
+  client.handlers["textDocument/inlayHint"] = function()end
   client.handlers["sts/javaType"] = function(_, result)
     return jdtls.execute_command("sts.java.type", result)
   end
