@@ -4,10 +4,12 @@
 ---@field java_cmd? string The path to the java command.
 ---@field log_file? string|function The path to the spring boot ls log file.
 ---@field server vim.lsp.ClientConfig The language server configuration.
+---@field exploded_ls_jar_data boolean The exploded language server jar data.
 
 ---@type bootls.Config
 local M = {
   ls_path = nil,
+  exploded_ls_jar_data = false,
   jdtls_name = "jdtls",
   java_cmd = nil,
   log_file = nil,

@@ -45,29 +45,44 @@ local function bootls_cmd(rt_dir, java_cmd)
     vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
     return
   end
-  local boot_classpath = {}
-  table.insert(boot_classpath, boot_path .. "/BOOT-INF/classes")
-  table.insert(boot_classpath, boot_path .. "/BOOT-INF/lib/*")
+  if config.exploded_ls_jar_data then
+    local boot_classpath = {}
+    table.insert(boot_classpath, boot_path .. "/BOOT-INF/classes")
+    table.insert(boot_classpath, boot_path .. "/BOOT-INF/lib/*")
 
-  local cmd = {
-    java_cmd or util.java_bin(),
-    "-XX:TieredStopAtLevel=1",
-    "-Xmx1G",
-    "-XX:+UseZGC",
-    "-cp",
-    table.concat(boot_classpath, util.is_win and ";" or ":"),
-    "-Dsts.lsp.client=vscode",
-    "-Dsts.log.file=" .. logfile(rt_dir),
-    "-Dspring.config.location=file:" .. boot_path .. "/BOOT-INF/classes/application.properties",
-    -- "-Dlogging.level.org.springframework=DEBUG",
-    "org.springframework.ide.vscode.boot.app.BootLanguageServerBootApp",
-  }
-
-  return cmd
+    local cmd = {
+      java_cmd or util.java_bin(),
+      "-XX:TieredStopAtLevel=1",
+      "-Xmx1G",
+      "-XX:+UseZGC",
+      "-cp",
+      table.concat(boot_classpath, util.is_win and ";" or ":"),
+      "-Dsts.lsp.client=vscode",
+      "-Dsts.log.file=" .. logfile(rt_dir),
+      "-Dspring.config.location=file:" .. boot_path .. "/BOOT-INF/classes/application.properties",
+      -- "-Dlogging.level.org.springframework=DEBUG",
+      "org.springframework.ide.vscode.boot.app.BootLanguageServerBootApp",
+    }
+    return cmd
+  else
+    local server_jar = vim.split(vim.fn.glob(boot_path .. "/spring-boot-language-server*.jar"), "\n")
+    if #server_jar == 0 then
+      vim.notify("Spring Boot LS jar not found", vim.log.levels.WARN)
+      return
+    end
+    local cmd = {
+      java_cmd or util.java_bin(),
+      "-XX:TieredStopAtLevel=1",
+      "-Xmx1G",
+      "-XX:+UseZGC",
+      "-jar",
+      server_jar[1],
+    }
+    return cmd
+  end
 end
 
 local ls_config = {
-  -- cmd = bootls_cmd(),
   name = "spring-boot",
   filetypes = { "java", "yaml", "jproperties" },
   -- root_dir = root_dir,
