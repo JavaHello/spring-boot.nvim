@@ -75,6 +75,8 @@ local function bootls_cmd(rt_dir, java_cmd)
       "-XX:TieredStopAtLevel=1",
       "-Xmx1G",
       "-XX:+UseZGC",
+      "-Dsts.lsp.client=vscode",
+      "-Dsts.log.file=" .. logfile(rt_dir),
       "-jar",
       server_jar[1],
     }
