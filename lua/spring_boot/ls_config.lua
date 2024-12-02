@@ -5,8 +5,8 @@ local M = {
   filetypes = { "java", "yaml", "jproperties" },
   root_dir = "",
   init_options = {
-    -- workspaceFolders = "",
-    enableJdtClasspath = true,
+    workspaceFolders = "",
+    enableJdtClasspath = false,
   },
   settings = {
     spring_boot = {},
