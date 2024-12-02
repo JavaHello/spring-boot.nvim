@@ -8,6 +8,7 @@ vim.g.spring_boot = {
     "jdt-ls-extension.jar",
     "sts-gradle-tooling.jar",
   },
+  jdt_expanded_extensions_jars = {},
 }
 
 local M = {}
@@ -42,18 +43,24 @@ M.init_lsp_commands = function()
 end
 
 M.get_ls_from_mason = function()
+  local result = M.add_jars_from_package("vscode-spring-boot-tools", "vscode-spring-boot-tools/language-server.jar")
+  if #result > 0 then
+    return result[1]
+  end
+  return nil
+end
+
+M.add_jars_from_package = function(package_name, key_prefix)
   local success, mason_registry = pcall(require, "mason-registry")
-  local result = nil
+  local result = {}
   if success then
-    local key_prefix = "vscode-spring-boot-tools/language-server.jar"
-    local mason_package = mason_registry.get_package("vscode-spring-boot-tools")
+    local mason_package = mason_registry.get_package(package_name)
     if mason_package:is_installed() then
       local install_path = mason_package:get_install_path()
       mason_package:get_receipt():if_present(function(recipe)
         for key, value in pairs(recipe.links.share) do
           if key:sub(1, #key_prefix) == key_prefix then
-            result = install_path .. "/" .. value
-            break
+            table.insert(result, install_path .. "/" .. value)
           end
         end
       end)
@@ -70,7 +77,10 @@ M.setup = function(opts)
   opts = vim.tbl_deep_extend("keep", opts, require("spring_boot.config"))
   if not opts.ls_path then
     opts.ls_path = M.get_ls_from_mason() -- get ls from mason-registry
-    if not opts.ls_path then
+    if opts.ls_path then
+      vim.g.spring_boot.jdt_expanded_extensions_jars =
+        M.add_jars_from_package("vscode-spring-boot-tools", "vscode-spring-boot-tools/jdtls/")
+    else
       -- try to find ls on standard installation path of vscode
       opts.ls_path = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/language-server")
       if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
@@ -88,6 +98,8 @@ M.setup = function(opts)
   if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
     -- a path was given in opts
     opts.exploded_ls_jar_data = true
+  else
+    opts.exploded_ls_jar_data = false
   end
   if not opts.ls_path then
     -- all possibilities finding the ls failed
@@ -99,6 +111,9 @@ M.setup = function(opts)
 end
 
 M.java_extensions = function()
+  if vim.g.spring_boot.jdt_expanded_extensions_jars and #vim.g.spring_boot.jdt_expanded_extensions_jars > 0 then
+    return vim.g.spring_boot.jdt_expanded_extensions_jars
+  end
   local bundles = {}
   local function bundle_jar(path)
     for _, jar in ipairs(vim.g.spring_boot.jdt_extensions_jars) do
