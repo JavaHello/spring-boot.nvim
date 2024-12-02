@@ -43,14 +43,14 @@ M.init_lsp_commands = function()
 end
 
 M.get_ls_from_mason = function()
-  local result = M.add_jars_from_package("vscode-spring-boot-tools", "vscode-spring-boot-tools/language-server.jar")
+  local result = M.get_from_mason_registry("vscode-spring-boot-tools", "vscode-spring-boot-tools/language-server.jar")
   if #result > 0 then
     return result[1]
   end
   return nil
 end
 
-M.add_jars_from_package = function(package_name, key_prefix)
+M.get_from_mason_registry = function(package_name, key_prefix)
   local success, mason_registry = pcall(require, "mason-registry")
   local result = {}
   if success then
@@ -79,7 +79,7 @@ M.setup = function(opts)
     opts.ls_path = M.get_ls_from_mason() -- get ls from mason-registry
     if opts.ls_path then
       vim.g.spring_boot.jdt_expanded_extensions_jars =
-        M.add_jars_from_package("vscode-spring-boot-tools", "vscode-spring-boot-tools/jdtls/")
+        M.get_from_mason_registry("vscode-spring-boot-tools", "vscode-spring-boot-tools/jdtls/")
     else
       -- try to find ls on standard installation path of vscode
       opts.ls_path = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/language-server")
