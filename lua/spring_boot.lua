@@ -41,13 +41,60 @@ M.init_lsp_commands = function()
   end
 end
 
+M.get_ls_from_mason = function()
+  local success, mason_registry = pcall(require, "mason-registry")
+  local result = nil
+  if success then
+    local key_prefix = "vscode-spring-boot-tools/language-server.jar"
+    local mason_package = mason_registry.get_package("vscode-spring-boot-tools")
+    if mason_package:is_installed() then
+      local install_path = mason_package:get_install_path()
+      mason_package:get_receipt():if_present(function(recipe)
+        for key, value in pairs(recipe.links.share) do
+          if key:sub(1, #key_prefix) == key_prefix then
+            result = install_path .. "/" .. value
+            break
+          end
+        end
+      end)
+    end
+  end
+  return result
+end
+
 local initialized = false
 M.setup = function(opts)
   if initialized then
     return
   end
-  M._config = opts
-  require("spring_boot.launch").setup()
+  opts = vim.tbl_deep_extend("keep", opts, require("spring_boot.config"))
+  if not opts.ls_path then
+    opts.ls_path = M.get_ls_from_mason() -- get ls from mason-registry
+    if not opts.ls_path then
+      -- try to find ls on standard installation path of vscode
+      opts.ls_path = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/language-server")
+      if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
+        -- it's an exploded jar
+        opts.exploded_ls_jar_data = true
+      else
+        -- it's a single jar
+        local server_jar = vim.split(vim.fn.glob(opts.ls_path .. "/spring-boot-language-server*.jar"), "\n")
+        if #server_jar > 0 then
+          opts.ls_path = server_jar[1]
+        end
+      end
+    end
+  end
+  if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
+    -- a path was given in opts
+    opts.exploded_ls_jar_data = true
+  end
+  if not opts.ls_path then
+    -- all possibilities finding the ls failed
+    vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
+  end
+  M.init_lsp_commands()
+  require("spring_boot.launch").setup(opts)
   initialized = true
 end
 
