@@ -70,8 +70,7 @@ end
 M.setup = function(opts)
   local ls_config = vim.tbl_deep_extend("keep", require("spring_boot.ls_config"), opts.server)
   ls_config.root_dir = opts.root_dir or M.root_dir()
-  classpath.register_classpath_service(ls_config)
-  java_data.register_java_data_service(ls_config)
+  ls_config.init_options.enableJdtClasspath = util.get_client(opts.jdtls_name) ~= nil
   ls_config.capabilities.workspace = {
     executeCommand = { value = true },
   }
@@ -80,6 +79,8 @@ M.setup = function(opts)
     return
   end
   ls_config.init_options.workspaceFolders = opts.root_dir
+  classpath.register_classpath_service(ls_config)
+  java_data.register_java_data_service(ls_config)
   local group = vim.api.nvim_create_augroup("spring_boot_ls", { clear = true })
   vim.api.nvim_create_autocmd({ "FileType" }, {
     group = group,
