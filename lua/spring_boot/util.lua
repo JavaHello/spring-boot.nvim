@@ -37,14 +37,43 @@ M.get_client = function(name)
 end
 
 M.get_spring_boot_client = function()
-  return M.get_client("spring-boot")
+  local clients = vim.lsp.get_clients({ name = "spring-boot" })
+  if clients and #clients > 0 then
+    return clients[1]
+  end
+  return nil
 end
-M.boot_execute_command = function(command, param, callback)
-  local err, resp = M.execute_command(M.get_spring_boot_client(), command, param, callback)
+
+M._boot_command_co = {}
+local function boot_client_execute_command(client, command, param, callback)
+  local err, resp = M.execute_command(client, command, param, callback)
   if err then
     print("Error executeCommand: " .. command .. "\n" .. vim.inspect(err))
   end
   return resp
+end
+
+M.boot_ls_init = function(_, _)
+  for _, co in ipairs(M._boot_command_co) do
+    coroutine.resume(co)
+  end
+  M._boot_command_co = {}
+end
+
+M.boot_execute_command = function(command, param, callback)
+  local client = M.get_spring_boot_client()
+  if client then
+    return boot_client_execute_command(client, command, param, callback)
+  end
+  vim.notify("Spring Boot LS is not ready, waiting for start", vim.log.levels.INFO)
+  local pco = coroutine.running()
+  local co = coroutine.create(function()
+    local resp = boot_client_execute_command(M.get_spring_boot_client(), command, param, callback)
+    coroutine.resume(pco, resp)
+    return resp
+  end)
+  table.insert(M._boot_command_co, co)
+  return coroutine.yield()
 end
 
 M.execute_command = function(client, command, param, callback)

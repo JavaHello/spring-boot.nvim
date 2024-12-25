@@ -142,6 +142,13 @@ M.setup = function(_)
     return
   end
   ls_config.init_options.workspaceFolders = ls_config.root_dir
+  local on_init = ls_config.on_init
+  ls_config.on_init = function(client, ctx)
+    util.boot_ls_init(client, ctx)
+    if on_init then
+      on_init(client, ctx)
+    end
+  end
   local group = vim.api.nvim_create_augroup("spring_boot_ls", { clear = true })
   vim.api.nvim_create_autocmd({ "FileType" }, {
     group = group,
