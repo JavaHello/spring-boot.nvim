@@ -1,13 +1,15 @@
+local jdt_ext_jars = {
+  "io.projectreactor.reactor-core.jar",
+  "org.reactivestreams.reactive-streams.jar",
+  "jdt-ls-commons.jar",
+  "jdt-ls-extension.jar",
+  "sts-gradle-tooling.jar",
+}
 vim.g.spring_boot = {
+  autocmd = true,
   jdt_extensions_path = nil,
   -- https://github.com/spring-projects/sts4/blob/7d3d91ecfa6087ae2d0e0f595da61ce8f52fed96/vscode-extensions/vscode-spring-boot/package.json#L33
-  jdt_extensions_jars = {
-    "io.projectreactor.reactor-core.jar",
-    "org.reactivestreams.reactive-streams.jar",
-    "jdt-ls-commons.jar",
-    "jdt-ls-extension.jar",
-    "sts-gradle-tooling.jar",
-  },
+  jdt_extensions_jars = jdt_ext_jars,
 }
 
 local M = {}
@@ -54,7 +56,7 @@ end
 M.java_extensions = function()
   local bundles = {}
   local function bundle_jar(path)
-    for _, jar in ipairs(vim.g.spring_boot.jdt_extensions_jars) do
+    for _, jar in ipairs(vim.g.spring_boot.jdt_extensions_jars or jdt_ext_jars) do
       if vim.endswith(path, jar) then
         return true
       end

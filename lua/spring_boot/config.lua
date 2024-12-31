@@ -20,7 +20,7 @@ local M = {
 
 local function init()
   local spring_boot = require("spring_boot")
-  M = vim.tbl_deep_extend("keep", spring_boot._config, M)
+  M = vim.tbl_deep_extend("keep", spring_boot._config or {}, M)
   spring_boot._config = nil
 end
 init()
