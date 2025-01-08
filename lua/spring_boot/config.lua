@@ -16,13 +16,14 @@ local M = {
   server = {
     cmd = {},
   },
+  autocmd = true,
 }
 
--- local function init()
---   local spring_boot = require("spring_boot")
---   M = vim.tbl_deep_extend("keep", spring_boot._config, M)
---   spring_boot._config = nil
--- end
--- init()
+local function init()
+  local spring_boot = require("spring_boot")
+  M = vim.tbl_deep_extend("keep", spring_boot._config or {}, M)
+  spring_boot._config = nil
+end
+init()
 
 return M
