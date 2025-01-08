@@ -62,6 +62,9 @@ M.get_from_mason_registry = function(package_name, key_prefix)
   local result = {}
   if success then
     local mason_package = mason_registry.get_package(package_name)
+    if mason_package == nil then
+      return result
+    end
     if mason_package:is_installed() then
       local install_path = mason_package:get_install_path()
       mason_package:get_receipt():if_present(function(recipe)
