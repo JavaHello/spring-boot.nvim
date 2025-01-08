@@ -61,6 +61,8 @@ M.get_from_mason_registry = function(package_name, key_prefix)
   local success, mason_registry = pcall(require, "mason-registry")
   local result = {}
   if success then
+    vim.notify("refreshing mason registry", vim.log.levels.INFO)
+    mason_registry.refresh()
     local mason_package = mason_registry.get_package(package_name)
     if mason_package == nil then
       return result
