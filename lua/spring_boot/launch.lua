@@ -12,10 +12,6 @@ M.root_dir = function()
   return vim.loop.cwd()
 end
 
-M.enable_classpath_listening = function()
-  util.boot_execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
-end
-
 ---@param opts bootls.Config
 M.logfile = function(opts, rt_dir)
   local lf = "/dev/null"
@@ -99,7 +95,7 @@ classpath.register_classpath_service(M.ls_config)
 java_data.register_java_data_service(M.ls_config)
 
 vim.lsp.commands["vscode-spring-boot.ls.start"] = function(_, _, _)
-  M.enable_classpath_listening()
+  util.boot_execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
   return {}
 end
 
