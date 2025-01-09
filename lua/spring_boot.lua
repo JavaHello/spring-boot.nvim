@@ -1,22 +1,23 @@
+local jdt_extensions_jars = {
+  "io.projectreactor.reactor-core.jar",
+  "org.reactivestreams.reactive-streams.jar",
+  "jdt-ls-commons.jar",
+  "jdt-ls-extension.jar",
+  "sts-gradle-tooling.jar",
+}
+
 local spring_boot = {
   jdt_extensions_path = nil,
   -- https://github.com/spring-projects/sts4/blob/7d3d91ecfa6087ae2d0e0f595da61ce8f52fed96/vscode-extensions/vscode-spring-boot/package.json#L33
-  jdt_extensions_jars = {
-    "io.projectreactor.reactor-core.jar",
-    "org.reactivestreams.reactive-streams.jar",
-    "jdt-ls-commons.jar",
-    "jdt-ls-extension.jar",
-    "sts-gradle-tooling.jar",
-  },
   jdt_expanded_extensions_jars = {},
-}
-spring_boot.is_bundle_jar = function(path)
-  for _, jar in ipairs(spring_boot.jdt_extensions_jars) do
-    if vim.endswith(path, jar) then
-      return true
+  is_bundle_jar = function(path)
+    for _, jar in ipairs(jdt_extensions_jars) do
+      if vim.endswith(path, jar) then
+        return true
+      end
     end
-  end
-end
+  end,
+}
 
 local M = {}
 
@@ -86,7 +87,8 @@ M.setup = function(opts)
   if initialized then
     return
   end
-  opts = vim.tbl_deep_extend("keep", opts, require("spring_boot.config"))
+  initialized = true
+  opts = vim.tbl_deep_extend("keep", opts or {}, require("spring_boot.config"))
   if not opts.ls_path then
     opts.ls_path = M.get_ls_from_mason() -- get ls from mason-registry
     if opts.ls_path then
@@ -122,7 +124,6 @@ M.setup = function(opts)
   end
   M.init_lsp_commands()
   require("spring_boot.launch").setup(opts)
-  initialized = true
 end
 
 M.java_extensions = function()

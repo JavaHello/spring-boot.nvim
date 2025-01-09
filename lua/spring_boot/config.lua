@@ -5,6 +5,7 @@
 ---@field log_file? string|function The path to the spring boot ls log file.
 ---@field server vim.lsp.ClientConfig The language server configuration.
 ---@field exploded_ls_jar_data boolean The exploded language server jar data.
+---@field autocmd boolean autimatically setup autocmd in neovim
 
 ---@type bootls.Config
 local M = {
@@ -18,12 +19,5 @@ local M = {
   },
   autocmd = true,
 }
-
-local function init()
-  local spring_boot = require("spring_boot")
-  M = vim.tbl_deep_extend("keep", spring_boot._config or {}, M)
-  spring_boot._config = nil
-end
-init()
 
 return M

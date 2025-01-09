@@ -33,7 +33,16 @@ local M = {
     end
     return filetype
   end,
-  capabilities = vim.lsp.protocol.make_client_capabilities(),
+  capabilities = vim.tbl_deep_extend(
+    "keep",
+    vim.lsp.protocol.make_client_capabilities(),
+    { workspace = {
+      executeCommand = { value = true },
+    } }
+  ),
+  on_init = function(client, ctx)
+    util.boot_ls_init(client, ctx)
+  end,
 }
 
 return M
