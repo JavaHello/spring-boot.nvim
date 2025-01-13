@@ -82,6 +82,8 @@ M.get_from_mason_registry = function(package_name, key_prefix)
 end
 
 local initialized = false
+
+---@param opts bootls.Config
 M.setup = function(opts)
   if initialized then
     return
@@ -103,7 +105,7 @@ M.setup = function(opts)
     if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
       -- it's an exploded jar
       opts.exploded_ls_jar_data = true
-    elseif (opts.ls_path:sub(-#".jar")) ~= ".jar" then
+    else
       -- it's a single jar
       local server_jar = vim.split(vim.fn.glob(opts.ls_path .. "/spring-boot-language-server*.jar"), "\n")
       if #server_jar > 0 then
@@ -122,7 +124,11 @@ M.setup = function(opts)
     opts.exploded_ls_jar_data = false
   end
   M.init_lsp_commands()
-  require("spring_boot.launch").setup(opts)
+
+  if opts.autocmd then
+    require("spring_boot.launch").ls_autocmd(opts)
+  end
+  return opts
 end
 
 M.java_extensions = function()

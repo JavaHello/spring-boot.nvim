@@ -2,103 +2,95 @@ local classpath = require("spring_boot.classpath")
 local java_data = require("spring_boot.java_data")
 local ls_config = require("spring_boot.ls_config")
 local util = require("spring_boot.util")
-
+local uv = vim.uv or vim.loop
 local M = {}
 
 M.root_dir = function()
-  local ok, jdtls = pcall(require, "jdtls.setup")
-  if ok then
-    return jdtls.find_root({ ".git", "mvnw", "gradlew" }) or vim.loop.cwd()
-  end
-  return vim.loop.cwd()
+  return vim.fs.root(0, { ".git", "mvnw", "gradlew" }) or uv.cwd()
 end
 
 ---@param opts bootls.Config
-M.logfile = function(opts, rt_dir)
-  local lf = "/dev/null"
+M.logfile = function(opts)
+  local lf
   if opts.log_file ~= nil then
     if type(opts.log_file) == "function" then
-      lf = opts.log_file(rt_dir)
+      lf = opts.log_file(opts.server.root_dir)
     elseif type(opts.log_file) == "string" then
-      lf = opts.log_file == "" and nil or opts.log_file
+      lf = opts.log_file
     end
   end
-  return lf
+  return lf or "/dev/null"
 end
 
-M.bootls_cmd = function(config, rt_dir, java_cmd)
-  if not config.ls_path then
-    vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
-    return
-  end
+M.bootls_cmd = function(config)
   if config.exploded_ls_jar_data then
     local boot_classpath = {}
     table.insert(boot_classpath, config.ls_path .. "/BOOT-INF/classes")
     table.insert(boot_classpath, config.ls_path .. "/BOOT-INF/lib/*")
 
     return {
-      config.java_cmd or java_cmd or util.java_bin(),
+      config.java_cmd or util.java_bin(),
       "-XX:TieredStopAtLevel=1",
       "-Xmx1G",
       "-XX:+UseZGC",
       "-cp",
       table.concat(boot_classpath, util.is_win and ";" or ":"),
       "-Dsts.lsp.client=vscode",
-      "-Dsts.log.file=" .. M.logfile(config, rt_dir),
+      "-Dsts.log.file=" .. M.logfile(config),
       "-Dspring.config.location=file:" .. config.ls_path .. "/BOOT-INF/classes/application.properties",
       -- "-Dlogging.level.org.springframework=DEBUG",
       "org.springframework.ide.vscode.boot.app.BootLanguageServerBootApp",
     }
   else
     return {
-      config.java_cmd or java_cmd or util.java_bin(),
+      config.java_cmd or util.java_bin(),
       "-XX:TieredStopAtLevel=1",
       "-Xmx1G",
       "-XX:+UseZGC",
       "-Dsts.lsp.client=vscode",
-      "-Dsts.log.file=" .. M.logfile(config, rt_dir),
+      "-Dsts.log.file=" .. M.logfile(config),
       "-jar",
       config.ls_path,
     }
   end
 end
 
-M._update_ls_config = true
+--- 使用 ftplugin 启动时，调用此方法
+---@param opts bootls.Config
+---@return vim.lsp.ClientConfig
 M.update_ls_config = function(opts)
-  if not M._update_ls_config then
-    return {}
+  local client_config = vim.tbl_deep_extend("keep", opts.server, ls_config)
+  if not client_config.root_dir then
+    client_config.root_dir = M.root_dir()
   end
-  M._update_ls_config = false
-  local result = vim.tbl_deep_extend("keep", ls_config, opts.server)
-  if not result.root_dir then
-    result.root_dir = M.root_dir()
+  if not client_config.cmd or #client_config.cmd == 0 then
+    if not opts.ls_path then
+      vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
+      return {}
+    end
+    client_config.cmd = M.bootls_cmd(opts)
   end
-  result.cmd = (result.cmd and #result.cmd > 0) and result.cmd or M.bootls_cmd(opts, result.root_dir, opts.java_cmd)
-  if not result.cmd then
-    return {}
-  end
-  result.init_options.workspaceFolders = result.root_dir
-  return result
-end
+  client_config.init_options.workspaceFolders = client_config.root_dir
 
-M.setup = function(opts)
-  local current_ls_config = M.update_ls_config(opts)
-  classpath.register_classpath_service(current_ls_config)
-  java_data.register_java_data_service(current_ls_config)
+  classpath.register_classpath_service(client_config)
+  java_data.register_java_data_service(client_config)
   vim.lsp.commands["vscode-spring-boot.ls.start"] = function(_, _, _)
     util.boot_execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
   end
-  if opts.autocmd then
-    local group = vim.api.nvim_create_augroup("spring_boot_ls", { clear = true })
-    vim.api.nvim_create_autocmd({ "FileType" }, {
-      group = group,
-      pattern = { "java", "yaml", "jproperties" },
-      desc = "Spring Boot Language Server",
-      callback = function(_)
-        M.start(current_ls_config)
-      end,
-    })
-  end
+  return client_config
+end
+
+M.ls_autocmd = function(opts)
+  local current_ls_config = M.update_ls_config(opts)
+  local group = vim.api.nvim_create_augroup("spring_boot_ls", { clear = true })
+  vim.api.nvim_create_autocmd({ "FileType" }, {
+    group = group,
+    pattern = { "java", "yaml", "jproperties" },
+    desc = "Spring Boot Language Server",
+    callback = function(_)
+      M.start(current_ls_config)
+    end,
+  })
 end
 
 M.start = function(opts)

@@ -3,14 +3,12 @@ local util = require("spring_boot.util")
 local M = {
   name = "spring-boot",
   filetypes = { "java", "yaml", "jproperties" },
-  root_dir = "",
+  root_dir = nil,
   init_options = {
-    workspaceFolders = "",
+    workspaceFolders = nil,
     enableJdtClasspath = false,
   },
-  settings = {
-    spring_boot = {},
-  },
+  settings = {},
   handlers = {
     ["sts/highlight"] = function() end,
     ["sts/moveCursor"] = function(err, result, ctx, config)
@@ -33,13 +31,11 @@ local M = {
     end
     return filetype
   end,
-  capabilities = vim.tbl_deep_extend(
-    "keep",
-    vim.lsp.protocol.make_client_capabilities(),
-    { workspace = {
+  capabilities = vim.tbl_deep_extend("force", vim.lsp.protocol.make_client_capabilities(), {
+    workspace = {
       executeCommand = { value = true },
-    } }
-  ),
+    },
+  }),
   on_init = function(client, ctx)
     util.boot_ls_init(client, ctx)
   end,
