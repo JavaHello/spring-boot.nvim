@@ -12,7 +12,7 @@
 
 ## 安装
 
-- `lazy.nvim` 使用 ``
+- `lazy.nvim`
   ```lua
   -- 使用 `autocmd` 方式启动(默认)
   -- 默认使用 mason 或 ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x 中的 jar
@@ -28,6 +28,7 @@
   },
 
   -- 使用 `ftplugin` 或自定义 方式启动
+  -- 如果你使用 `nvim-jdtls`，并且使用 `ftplugin/java.lua` 的方式启动 `jdtls` 这种方式是推荐的
   {
     "JavaHello/spring-boot.nvim",
     lazy = true,
