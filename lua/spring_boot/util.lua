@@ -32,7 +32,7 @@ M.get_client = function(name)
   if clients and #clients > 0 then
     return clients[1]
   end
-  vim.notify("Client not found: " .. name, vim.log.levels.ERROR)
+  -- vim.notify("Client not found: " .. name, vim.log.levels.ERROR)
   return nil
 end
 

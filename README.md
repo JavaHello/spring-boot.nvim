@@ -12,36 +12,30 @@
 
 ## 安装
 
-- `lazy.nvim`
+- `lazy.nvim` 使用 ``
   ```lua
+  -- 使用 `autocmd` 方式启动(默认)
+  -- 默认使用 mason 或 ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x 中的 jar
   {
     "JavaHello/spring-boot.nvim",
-    ft = "java",
+    ft = {"java", "yaml", "jproperties"},
     dependencies = {
       "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
       "ibhagwan/fzf-lua", -- 可选
     },
-    init = function()
-      vim.g.spring_boot = {
-        jdt_extensions_path = nil, -- 默认使用 ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
-        jdt_extensions_jars = {
-          "io.projectreactor.reactor-core.jar",
-          "org.reactivestreams.reactive-streams.jar",
-          "jdt-ls-commons.jar",
-          "jdt-ls-extension.jar",
-          "sts-gradle-tooling.jar",
-        },
-      }
-    end,
-    config = function()
-      require("spring_boot").setup {
-        ls_path = nil, -- 默认使用 ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
-        jdtls_name = "jdtls",
-        log_file = nil,
-        java_cmd = nil,
-      }
-    end,
+    ---@type bootls.Config
+    opts = {}
   },
+
+  -- 使用 `ftplugin` 或自定义 方式启动
+  {
+    "JavaHello/spring-boot.nvim",
+    lazy = true,
+    dependencies = {
+      "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
+    },
+    config = false
+  }
   ```
 - [Visual Studio Code](https://code.visualstudio.com/) 中安装[VScode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot)(可选的)
 
