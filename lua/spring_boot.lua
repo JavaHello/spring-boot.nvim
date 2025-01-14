@@ -105,7 +105,7 @@ M.setup = function(opts)
     if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
       -- it's an exploded jar
       opts.exploded_ls_jar_data = true
-    else
+    elseif (opts.ls_path:sub(-#".jar")) ~= ".jar" then
       -- it's a single jar
       local server_jar = vim.split(vim.fn.glob(opts.ls_path .. "/spring-boot-language-server*.jar"), "\n")
       if #server_jar > 0 then
