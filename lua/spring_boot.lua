@@ -63,8 +63,10 @@ M.get_from_mason_registry = function(package_name, key_prefix)
   local result = {}
   if success then
     mason_registry.refresh()
-    local mason_package = mason_registry.get_package(package_name)
-    if mason_package == nil then
+    local mason_package
+    if mason_registry.has_package(package_name) then
+      mason_package = mason_registry.get_package(package_name)
+    else
       return result
     end
     if mason_package:is_installed() then
