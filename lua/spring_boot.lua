@@ -51,33 +51,24 @@ M.init_lsp_commands = function()
 end
 
 M.get_ls_from_mason = function()
-  local result = M.get_from_mason_registry("vscode-spring-boot-tools", "vscode-spring-boot-tools/language-server.jar")
+  local result = M.get_from_mason_registry("vscode-spring-boot-tools", "language-server.jar")
   if #result > 0 then
     return result[1]
   end
   return nil
 end
 
-M.get_from_mason_registry = function(package_name, key_prefix)
+M.get_from_mason_registry = function(package_name, filter)
   local success, mason_registry = pcall(require, "mason-registry")
   local result = {}
   if success then
-    mason_registry.refresh()
-    local mason_package
-    if mason_registry.has_package(package_name) then
-      mason_package = mason_registry.get_package(package_name)
-    else
-      return result
-    end
-    if mason_package:is_installed() then
-      local install_path = mason_package:get_install_path()
-      mason_package:get_receipt():if_present(function(recipe)
-        for key, value in pairs(recipe.links.share) do
-          if key:sub(1, #key_prefix) == key_prefix then
-            table.insert(result, install_path .. "/" .. value)
-          end
+    local has_package, mason_package = pcall(mason_registry.get_package, package_name)
+    if has_package then
+      if mason_package:is_installed() then
+        for key, value in pairs(vim.fn.globpath("$MASON/share/" .. package_name, filter or "*", true, true)) do
+          table.insert(result, value)
         end
-      end)
+      end
     end
   end
   return result
@@ -95,8 +86,7 @@ M.setup = function(opts)
   if not opts.ls_path then
     opts.ls_path = M.get_ls_from_mason() -- get ls from mason-registry
     if opts.ls_path then
-      spring_boot.jdt_expanded_extensions_jars =
-        M.get_from_mason_registry("vscode-spring-boot-tools", "vscode-spring-boot-tools/jdtls/")
+      spring_boot.jdt_expanded_extensions_jars = M.get_from_mason_registry("vscode-spring-boot-tools", "jdtls/*.jar")
     end
   end
   if not opts.ls_path then
@@ -137,7 +127,7 @@ M.java_extensions = function()
   if spring_boot.jdt_expanded_extensions_jars and #spring_boot.jdt_expanded_extensions_jars > 0 then
     return spring_boot.jdt_expanded_extensions_jars
   end
-  local bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "vscode-spring-boot-tools/jdtls/")
+  local bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jdtls/*.jar")
   if #bundles > 0 then
     for _, v in pairs(bundles) do
       table.insert(spring_boot.jdt_expanded_extensions_jars, v)
