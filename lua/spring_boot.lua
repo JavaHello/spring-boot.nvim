@@ -74,6 +74,48 @@ M.get_from_mason_registry = function(package_name, filter)
   return result
 end
 
+M.get_boot_ls = function(ls_path)
+  if not ls_path then
+    ls_path = M.get_ls_from_mason() -- get ls from mason-registry
+  end
+  if not ls_path then
+    ls_path = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/language-server")
+  end
+  if ls_path then
+    if vim.fn.isdirectory(ls_path .. "/BOOT-INF") ~= 0 then
+      -- it's an exploded jar
+      return ls_path
+    elseif (ls_path:sub(-#".jar")) ~= ".jar" then
+      -- it's a single jar
+      local server_jar = vim.split(vim.fn.glob(ls_path .. "/spring-boot-language-server*.jar"), "\n")
+      if #server_jar > 0 then
+        return server_jar[1]
+      end
+    end
+  end
+  return ls_path
+end
+
+M.get_jars = function(jar_paths)
+  local bundles = {}
+  if not jar_paths then
+    bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jars/*.jar")
+    if bundles and #bundles > 0 then
+      return bundles
+    else
+      jar_paths = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/jars")
+    end
+  end
+  if jar_paths then
+    for _, bundle in ipairs(vim.split(vim.fn.glob(jar_paths .. "/*.jar"), "\n")) do
+      if spring_boot.is_bundle_jar(bundle) then
+        table.insert(bundles, bundle)
+      end
+    end
+  end
+  return bundles
+end
+
 local initialized = false
 
 ---@param opts bootls.Config
@@ -84,27 +126,9 @@ M.setup = function(opts)
   initialized = true
   opts = vim.tbl_deep_extend("keep", opts or {}, require("spring_boot.config"))
   if not opts.ls_path then
-    opts.ls_path = M.get_ls_from_mason() -- get ls from mason-registry
-    if opts.ls_path then
-      spring_boot.jdt_expanded_extensions_jars = M.get_from_mason_registry("vscode-spring-boot-tools", "jdtls/*.jar")
-    end
+    opts.ls_path = M.get_boot_ls() -- get ls from mason-registry
   end
   if not opts.ls_path then
-    -- try to find ls on standard installation path of vscode
-    opts.ls_path = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/language-server")
-  end
-  if opts.ls_path then
-    if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
-      -- it's an exploded jar
-      opts.exploded_ls_jar_data = true
-    elseif (opts.ls_path:sub(-#".jar")) ~= ".jar" then
-      -- it's a single jar
-      local server_jar = vim.split(vim.fn.glob(opts.ls_path .. "/spring-boot-language-server*.jar"), "\n")
-      if #server_jar > 0 then
-        opts.ls_path = server_jar[1]
-      end
-    end
-  else
     -- all possibilities finding the language server failed
     vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
     return
@@ -123,25 +147,13 @@ M.setup = function(opts)
   return opts
 end
 
-M.java_extensions = function()
+M.java_extensions = function(jar_paths)
   if spring_boot.jdt_expanded_extensions_jars and #spring_boot.jdt_expanded_extensions_jars > 0 then
     return spring_boot.jdt_expanded_extensions_jars
   end
-  local bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jdtls/*.jar")
+  local bundles = M.get_jars(jar_paths)
   if #bundles > 0 then
-    for _, v in pairs(bundles) do
-      table.insert(spring_boot.jdt_expanded_extensions_jars, v)
-    end
-    return bundles
-  end
-  local spring_boot_path = spring_boot.jdt_extensions_path
-    or require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/jars")
-  if spring_boot_path then
-    for _, bundle in ipairs(vim.split(vim.fn.glob(spring_boot_path .. "/*.jar"), "\n")) do
-      if spring_boot.is_bundle_jar(bundle) then
-        table.insert(bundles, bundle)
-      end
-    end
+    spring_boot.jdt_expanded_extensions_jars = bundles
   end
   return bundles
 end
