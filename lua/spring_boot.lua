@@ -99,8 +99,13 @@ end
 M.get_jars = function(jar_paths)
   local bundles = {}
   if not jar_paths then
-    bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jars/*.jar")
-    if bundles and #bundles > 0 then
+    local spring_boot_bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jars/*.jar")
+    if spring_boot_bundles and #spring_boot_bundles > 0 then
+      for _, bundle in ipairs(spring_boot_bundles) do
+        if spring_boot.is_bundle_jar(bundle) then
+          table.insert(bundles, bundle)
+        end
+      end
       return bundles
     else
       jar_paths = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/jars")
