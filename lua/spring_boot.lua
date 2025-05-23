@@ -99,20 +99,14 @@ end
 M.get_jars = function(jar_paths)
   local bundles = {}
   if not jar_paths then
-    local spring_boot_bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jars/*.jar")
-    if spring_boot_bundles and #spring_boot_bundles > 0 then
-      for _, bundle in ipairs(spring_boot_bundles) do
-        if spring_boot.is_bundle_jar(bundle) then
-          table.insert(bundles, bundle)
-        end
-      end
-      return bundles
-    else
-      jar_paths = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/jars")
-    end
+    bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jars/*.jar")
+    jar_paths = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/jars")
   end
-  if jar_paths then
-    for _, bundle in ipairs(vim.split(vim.fn.glob(jar_paths .. "/*.jar"), "\n")) do
+  if (not bundles or #bundles == 0) and jar_paths then
+    bundles = vim.split(vim.fn.glob(jar_paths .. "/*.jar"), "\n")
+  end
+  if bundles and #bundles > 0 then
+    for _, bundle in ipairs(bundles) do
       if spring_boot.is_bundle_jar(bundle) then
         table.insert(bundles, bundle)
       end
