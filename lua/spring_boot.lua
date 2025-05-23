@@ -65,8 +65,10 @@ M.get_from_mason_registry = function(package_name, filter)
     local has_package, mason_package = pcall(mason_registry.get_package, package_name)
     if has_package then
       if mason_package:is_installed() then
-        for key, value in pairs(vim.fn.globpath("$MASON/share/" .. package_name, filter or "*", true, true)) do
-          table.insert(result, value)
+        for _, value in pairs(vim.fn.globpath("$MASON/share/" .. package_name, filter or "*", true, true)) do
+          if spring_boot.is_bundle_jar(value) then
+            table.insert(result, value)
+          end
         end
       end
     end
