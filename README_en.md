@@ -1,4 +1,4 @@
-[Chinese](./README.md)
+[中文](./README.md)
 
 # Spring Boot Nvim
 
