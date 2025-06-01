@@ -1,71 +1,65 @@
+[中文](./README.md)
+
 # Spring Boot Nvim
 
-Integrate some features from the [VScode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot) plugin into `Neovim`.
+Adapted from [VSCode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot) extension, integrating some of its features into `Neovim`.
 
-- [x] Find Beans annotated with `Spring`.
-- [x] Find Web Endpoints.
-- [x] Autocompletion and navigation for `application.properties` and `application.yml` files.
-- [x] Code snippet completion.
-- [x] `Code Action`.
+- [x] Find Beans using Spring annotations
+- [x] Discover Web Endpoints
+- [x] Code completion hints and navigation for `application.properties`/`application.yml`
+- [x] Dependency hints/completion for Spring annotations
+- [x] Code Actions
 
 ## Installation
 
 - `lazy.nvim`
   ```lua
-    {
-      "JavaHello/spring-boot.nvim",
-      ft = "java",
-      dependencies = {
-        "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
-        "ibhagwan/fzf-lua", -- optional
-      },
-    }
+  -- Using autocmd launch (default)
+  -- Default uses jars from mason or ~/.vscode/extensions/vmware.vscode-spring-boot-x.x.x
+  {
+    "JavaHello/spring-boot.nvim",
+    ft = {"java", "yaml", "jproperties"},
+    dependencies = {
+      "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
+      "ibhagwan/fzf-lua", -- optional
+    },
+    ---@type bootls.Config
+    opts = {}
+  },
+
+  -- Using ftplugin or custom launch
+  -- Recommended if using nvim-jdtls with ftplugin/java.lua setup
+  {
+    "JavaHello/spring-boot.nvim",
+    lazy = true,
+    dependencies = {
+      "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
+    },
+    config = false
+  }
   ```
-- Optionally, install [VScode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot) in [Visual Studio Code](https://code.visualstudio.com/).
+- Install [VSCode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot) in [Visual Studio Code](https://code.visualstudio.com/) (optional)
 
-## Configuration
+## `jdtls` Configuration
 
-### `spring-boot.nvim`
+### Option 1: Using `nvim-jdtls`
 
-```lua
-  require('spring_boot').setup({})
-```
-
-- Default configuration
-  ```lua
-    vim.g.spring_boot = {
-      jdt_extensions_path = nil, -- defaults to ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
-      jdt_extensions_jars = {
-        "io.projectreactor.reactor-core.jar",
-        "org.reactivestreams.reactive-streams.jar",
-        "jdt-ls-commons.jar",
-        "jdt-ls-extension.jar",
-      },
-    }
-    require('spring_boot').setup({
-      ls_path = nil, -- defaults to ~/.vscode/extensions/vmware.vscode-spring-boot-x.xx.x
-      jdtls_name = "jdtls",
-      log_file = nil,
-      java_cmd = nil, -- by default will try to get java 17+ path by using JAVA_HOME. If set, this will use the value here as the java command
-    })
-  ```
-
-### `nvim-jdtls`
-
-For detailed configuration, refer to the [nvim-jdtls](https://github.com/mfussenegger/nvim-jdtls) project.
+Refer to [nvim-jdtls](https://github.com/mfussenegger/nvim-jdtls) for detailed configuration
 
 ```lua
 local jdtls_config = {
   bundles = {}
 }
--- Add spring-boot jdtls extension jar files
+-- Add spring-boot jdtls extension jars
 vim.list_extend(jdtls_config.bundles, require("spring_boot").java_extensions())
 ```
 
-### `nvim-lspconfig`
+### Option 2: Using `nvim-lspconfig`
 
 ```lua
+-- Add global command handlers
 require('spring_boot').init_lsp_commands()
+-- Add spring-boot jdtls extension jars
 require("lspconfig").jdtls.setup {
   init_options = {
     bundles = require("spring_boot").java_extensions(),
@@ -75,8 +69,8 @@ require("lspconfig").jdtls.setup {
 
 ## Usage
 
-- Find Beans annotated with `Spring`.
+- Find Beans using Spring annotations:
   ```vim
   :FzfLua lsp_live_workspace_symbols
   ```
-  ![lsp_live_workspace_symbols](https://javahello.github.io/dev/nvim-lean/images/spring-boot.png)
+  ![lsp_live_workspace_symbols](https://github.com/JavaHello/javahello.github.io/raw/refs/heads/master/content/posts/nvim-lean/images/spring-boot.png)
