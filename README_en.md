@@ -73,4 +73,4 @@ require("lspconfig").jdtls.setup {
   ```vim
   :FzfLua lsp_live_workspace_symbols
   ```
-  ![lsp_live_workspace_symbols](https://javahello.github.io/dev/nvim-lean/images/spring-boot.png)
+  ![lsp_live_workspace_symbols](https://github.com/JavaHello/javahello.github.io/raw/refs/heads/master/content/posts/nvim-lean/images/spring-boot.png)
