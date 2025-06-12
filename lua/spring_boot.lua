@@ -100,6 +100,10 @@ M.get_jars = function(jar_paths)
   local bundles
   if not jar_paths then
     bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jars/*.jar")
+    if not bundles or #bundles == 0 then
+      -- see https://github.com/mason-org/mason-registry/blob/7794e2ddc7ecc7e37650f58e45eb51c3d579cdbb/packages/vscode-spring-boot-tools/package.yaml#L25
+      bundles = M.get_from_mason_registry("vscode-spring-boot-tools", "jdtls/*.jar")
+    end
     jar_paths = require("spring_boot.vscode").find_one("/vmware.vscode-spring-boot-*/jars")
   end
   if (not bundles or #bundles == 0) and jar_paths then
