@@ -21,7 +21,7 @@
     ft = {"java", "yaml", "jproperties"},
     dependencies = {
       "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
-      "ibhagwan/fzf-lua", -- 可选
+      "ibhagwan/fzf-lua", -- 可选，用于符号选择等UI功能。也可以使用其他选择器（例如 telescope.nvim）。
     },
     ---@type bootls.Config
     opts = {}
@@ -70,7 +70,16 @@ require("lspconfig").jdtls.setup {
 ## 使用
 
 - 查找使用了 `Spring` 注解的 `Bean`。
-  ```vim
-  :FzfLua lsp_live_workspace_symbols
-  ```
+  此功能利用 LSP 工作区符号。您可以使用您偏好的、支持显示 LSP 工作区符号的模糊查找器。
+  例如：
+  - 如果您正在使用 `fzf-lua`：
+    ```vim
+    :FzfLua lsp_live_workspace_symbols
+    ```
+  - 如果您正在使用 `telescope.nvim`：
+    ```vim
+    :lua require'telescope.builtin'.lsp_workspace_symbols{}
+    ```
+  *(注意：具体命令可能因您选择的选取器及其配置而异。请确保您的选取器已配置为处理 LSP 符号。)*
   ![lsp_live_workspace_symbols](https://github.com/JavaHello/javahello.github.io/raw/refs/heads/master/content/posts/nvim-lean/images/spring-boot.png)
+

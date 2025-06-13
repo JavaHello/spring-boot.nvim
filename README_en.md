@@ -21,7 +21,7 @@ Adapted from [VSCode Spring Boot](https://marketplace.visualstudio.com/items?ite
     ft = {"java", "yaml", "jproperties"},
     dependencies = {
       "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
-      "ibhagwan/fzf-lua", -- optional
+      "ibhagwan/fzf-lua", -- optional, for UI features like symbol picking. Other pickers (e.g., telescope.nvim) can also be used.
     },
     ---@type bootls.Config
     opts = {}
@@ -70,7 +70,16 @@ require("lspconfig").jdtls.setup {
 ## Usage
 
 - Find Beans using Spring annotations:
-  ```vim
-  :FzfLua lsp_live_workspace_symbols
-  ```
+  This feature leverages LSP workspace symbols. You can use your preferred fuzzy finder that supports displaying LSP workspace symbols.
+  For example:
+  - If you are using `fzf-lua`:
+    ```vim
+    :FzfLua lsp_live_workspace_symbols
+    ```
+  - If you are using `telescope.nvim`:
+    ```vim
+    :lua require'telescope.builtin'.lsp_workspace_symbols{}
+    ```
+  *(Note: The exact command may vary depending on your chosen picker and its configuration. Ensure your picker is set up to handle LSP symbols.)*
   ![lsp_live_workspace_symbols](https://github.com/JavaHello/javahello.github.io/raw/refs/heads/master/content/posts/nvim-lean/images/spring-boot.png)
+
