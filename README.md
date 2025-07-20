@@ -27,16 +27,6 @@
     opts = {}
   },
 
-  -- 使用 `ftplugin` 或自定义 方式启动
-  -- 如果你使用 `nvim-jdtls`，并且使用 `ftplugin/java.lua` 的方式启动 `jdtls` 这种方式是推荐的
-  {
-    "JavaHello/spring-boot.nvim",
-    lazy = true,
-    dependencies = {
-      "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
-    },
-    config = false
-  }
   ```
 - [Visual Studio Code](https://code.visualstudio.com/) 中安装[VScode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot)(可选的)
 

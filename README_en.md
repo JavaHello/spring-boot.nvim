@@ -27,16 +27,6 @@ Adapted from [VSCode Spring Boot](https://marketplace.visualstudio.com/items?ite
     opts = {}
   },
 
-  -- Using ftplugin or custom launch
-  -- Recommended if using nvim-jdtls with ftplugin/java.lua setup
-  {
-    "JavaHello/spring-boot.nvim",
-    lazy = true,
-    dependencies = {
-      "mfussenegger/nvim-jdtls", -- or nvim-java, nvim-lspconfig
-    },
-    config = false
-  }
   ```
 - Install [VSCode Spring Boot](https://marketplace.visualstudio.com/items?itemName=vmware.vscode-spring-boot) in [Visual Studio Code](https://code.visualstudio.com/) (optional)
 
