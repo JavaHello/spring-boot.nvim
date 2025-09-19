@@ -20,15 +20,11 @@ M.register_java_data_service = function(client)
   end
 
   client.handlers["sts/javaSearchTypes"] = function(_, result)
-    -- TODO
-    print("sts/javaSearchTypes")
-    print(vim.inspect(result))
+    return jdtls.execute_command("sts.java.search.types", result)
   end
 
   client.handlers["sts/javaSearchPackages"] = function(_, result)
-    -- TODO
-    print("sts/javaSearchPackages")
-    print(vim.inspect(result))
+    return jdtls.execute_command("sts.java.search.packages", result)
   end
 
   client.handlers["sts/javaSubTypes"] = function(_, result)
@@ -36,13 +32,15 @@ M.register_java_data_service = function(client)
   end
 
   client.handlers["sts/javaSuperTypes"] = function(_, result)
-    -- TODO
-    print("sts/javaSuperTypes")
-    print(vim.inspect(result))
+    return jdtls.execute_command("sts.java.hierarchy.supertypes", result)
   end
 
   client.handlers["sts/javaCodeComplete"] = function(_, result)
     return jdtls.execute_command("sts.java.code.completions", result)
+  end
+
+  client.handlers["sts/project/gav"] = function(_, result)
+    return jdtls.execute_command("sts.project.gav", result)
   end
 end
 
