@@ -86,7 +86,8 @@ M.execute_command = function(client, command, param, callback)
       end
     end
   end
-  client.request("workspace/executeCommand", {
+  -- client.request deprecated
+  client:request("workspace/executeCommand", {
     command = command,
     arguments = param,
   }, callback, nil)
