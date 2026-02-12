@@ -49,6 +49,10 @@ M.bootls_cmd = function(config)
       "-XX:+UseZGC",
       "-Dsts.lsp.client=vscode",
       "-Dsts.log.file=" .. M.logfile(config),
+      -- Fix appearance of LOG-FILE-UNDEFINED files
+      -- https://github.com/spring-projects/spring-tools/commit/522acf1fa7fc074cbd24ffece25f3368ba5ebe4d
+      "-Dspring.profiles.active=file-logging",
+      "-Dlogging.file.name=" .. M.logfile(config),
       "-jar",
       config.ls_path,
     }
