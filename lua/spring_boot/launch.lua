@@ -53,6 +53,7 @@ M.bootls_cmd = function(config)
       -- https://github.com/spring-projects/spring-tools/commit/522acf1fa7fc074cbd24ffece25f3368ba5ebe4d
       "-Dspring.profiles.active=file-logging",
       "-Dlogging.file.name=" .. M.logfile(config),
+      "-Dlogging.level.root=" .. (config.logLevel or "warn"),
       "-jar",
       config.ls_path,
     }
