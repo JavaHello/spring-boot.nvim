@@ -36,7 +36,7 @@ M.init_lsp_commands = function()
       if fn then
         local ok, result = pcall(fn, params.arguments, ctx)
         if ok then
-          return result
+          return result == nil and vim.NIL or result
         else
           return vim.lsp.rpc_response_error(vim.lsp.protocol.ErrorCodes.InternalError, result)
         end
