@@ -21,33 +21,50 @@ local spring_boot = {
 
 local M = {}
 
+--- Handles `workspace/executeClientCommand`: a server asking the editor to run
+--- a command, possibly on another server. The command is resolved through the
+--- client that sent the request, so per-client `commands` win.
+---
+--- `lsp/spring-boot.lua` registers this on the `spring-boot` client, which is
+--- enough on its own. See |spring_boot.init_lsp_commands()| for the global
+--- variant.
+--- see https://github.com/mfussenegger/nvim-jdtls/blob/29255ea26dfb51ef0213f7572bff410f1afb002d/lua/jdtls.lua#L819
+---@type lsp.Handler
+M.execute_client_command = function(_, params, ctx)
+  local client = vim.lsp.get_client_by_id(ctx.client_id) or {}
+  local commands = client.commands or {}
+  local global_commands = vim.lsp.commands
+  local fn = commands[params.command] or global_commands[params.command]
+  if fn then
+    local ok, result = pcall(fn, params.arguments, ctx)
+    if ok then
+      return result == nil and vim.NIL or result
+    else
+      return vim.lsp.rpc_response_error(vim.lsp.protocol.ErrorCodes.InternalError, result)
+    end
+  else
+    return vim.lsp.rpc_response_error(
+      vim.lsp.protocol.ErrorCodes.MethodNotFound,
+      "Command " .. params.command .. " not supported on client"
+    )
+  end
+end
+
+--- Installs `workspace/executeClientCommand` globally, for every client.
+---
+--- The `spring-boot` client does not need this, but other clients a server may
+--- want to delegate to (such as a `jdtls` set up through nvim-lspconfig) do.
 M.init_lsp_commands = function()
-  local o, _ = pcall(require, "jdtls")
-  if o then
+  if vim.lsp.handlers["workspace/executeClientCommand"] then
+    -- Already provided, e.g. by an earlier call or by nvim-jdtls.
     return
   end
-  -- see  https://github.com/mfussenegger/nvim-jdtls/blob/29255ea26dfb51ef0213f7572bff410f1afb002d/lua/jdtls.lua#L819
-  if not vim.lsp.handlers["workspace/executeClientCommand"] then
-    vim.lsp.handlers["workspace/executeClientCommand"] = function(_, params, ctx) -- luacheck: ignore 122
-      local client = vim.lsp.get_client_by_id(ctx.client_id) or {}
-      local commands = client.commands or {}
-      local global_commands = vim.lsp.commands
-      local fn = commands[params.command] or global_commands[params.command]
-      if fn then
-        local ok, result = pcall(fn, params.arguments, ctx)
-        if ok then
-          return result == nil and vim.NIL or result
-        else
-          return vim.lsp.rpc_response_error(vim.lsp.protocol.ErrorCodes.InternalError, result)
-        end
-      else
-        return vim.lsp.rpc_response_error(
-          vim.lsp.protocol.ErrorCodes.MethodNotFound,
-          "Command " .. params.command .. " not supported on client"
-        )
-      end
-    end
+  if pcall(require, "jdtls") then
+    -- Loading nvim-jdtls just installed its own equivalent handler. Prefer it
+    -- rather than clobbering it.
+    return
   end
+  vim.lsp.handlers["workspace/executeClientCommand"] = M.execute_client_command -- luacheck: ignore 122
 end
 
 M.get_ls_from_mason = function()
@@ -120,42 +137,52 @@ M.get_jars = function(jar_paths)
   return result
 end
 
-local initialized = false
-
----@param opts bootls.Config
+--- Merges `opts` into the plugin configuration, resolves the language server
+--- and enables the client.
+---
+--- Safe to call more than once; later calls override earlier ones.
+---
+---@param opts? bootls.Config
+---@return bootls.Config
 M.setup = function(opts)
-  if initialized then
-    return
+  local config = require("spring_boot.config")
+  -- `vim.tbl_deep_extend` allocates a new table, so the result has to be
+  -- copied back: other modules read the options off the config module.
+  for key, value in pairs(vim.tbl_deep_extend("force", config, opts or {})) do
+    config[key] = value
   end
-  initialized = true
-  opts = vim.tbl_deep_extend("keep", opts or {}, require("spring_boot.config"))
-  if not opts.ls_path then
-    opts.ls_path = M.get_boot_ls() -- get ls from mason-registry
-  end
-  if not opts.ls_path then
-    -- all possibilities finding the language server failed
-    vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
-    return
-  end
-  if vim.fn.isdirectory(opts.ls_path .. "/BOOT-INF") ~= 0 then
-    -- a path was given in opts
-    opts.exploded_ls_jar_data = true
-  else
-    opts.exploded_ls_jar_data = false
-  end
-  M.init_lsp_commands()
 
-  if opts.autocmd then
-    require("spring_boot.launch").ls_autocmd(opts)
+  if not config.ls_path then
+    -- get ls from mason-registry, then from the vscode extension directory
+    config.ls_path = M.get_boot_ls()
   end
-  return opts
+  if not config.ls_path then
+    -- all possibilities finding the language server failed
+    vim.notify("Spring Boot LS is not installed. Run :checkhealth spring_boot", vim.log.levels.WARN)
+    return config
+  end
+
+  -- Options may have changed, so workspaces are re-judged by `project_filter`.
+  require("spring_boot.launch").clear_project_filter_cache()
+
+  -- Highest priority layer of the config merge chain, see |lsp-config-merge|.
+  -- Everything else comes from the `lsp/spring-boot.lua` shipped with the
+  -- plugin, which reads the rest of `config` lazily.
+  vim.lsp.config("spring-boot", config.server or {})
+  if config.auto_enable then
+    vim.lsp.enable("spring-boot")
+  end
+  return config
 end
 
 M.java_extensions = function(jar_paths)
   if spring_boot.jdt_expanded_extensions_jars and #spring_boot.jdt_expanded_extensions_jars > 0 then
     return spring_boot.jdt_expanded_extensions_jars
   end
-  local bundles = M.get_jars(jar_paths)
+  local bundles = require("spring_boot.config").jars
+  if not bundles or #bundles == 0 then
+    bundles = M.get_jars(jar_paths)
+  end
   if #bundles > 0 then
     spring_boot.jdt_expanded_extensions_jars = bundles
   end

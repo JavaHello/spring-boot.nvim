@@ -1,47 +1,39 @@
 local M = {}
-local jdtls = require("spring_boot.jdtls")
 
-M.register_java_data_service = function(client)
-  client.handlers["sts/javaType"] = function(_, result)
-    return jdtls.execute_command("sts.java.type", result)
-  end
+local handlers
 
-  client.handlers["sts/javadocHoverLink"] = function(_, result)
-    -- fix: https://github.com/spring-projects/sts4/issues/1229
-    return jdtls.execute_command("sts.java.javadocHoverLink", result)
-  end
+--- Requests the Spring Boot language server sends to the client, and the jdtls
+--- command that answers each of them.
+---
+--- `sts/javadocHoverLink` exists to work around
+--- https://github.com/spring-projects/sts4/issues/1229
+local commands = {
+  ["sts/javaType"] = "sts.java.type",
+  ["sts/javadocHoverLink"] = "sts.java.javadocHoverLink",
+  ["sts/javaLocation"] = "sts.java.location",
+  ["sts/javadoc"] = "sts.java.javadoc",
+  ["sts/javaSearchTypes"] = "sts.java.search.types",
+  ["sts/javaSearchPackages"] = "sts.java.search.packages",
+  ["sts/javaSubTypes"] = "sts.java.hierarchy.subtypes",
+  ["sts/javaSuperTypes"] = "sts.java.hierarchy.supertypes",
+  ["sts/javaCodeComplete"] = "sts.java.code.completions",
+  ["sts/project/gav"] = "sts.project.gav",
+}
 
-  client.handlers["sts/javaLocation"] = function(_, result)
-    return jdtls.execute_command("sts.java.location", result)
+--- Every request carries the arguments jdtls needs, so they all reduce to a
+--- single `workspace/executeCommand` on the jdtls client.
+---@return table<string, lsp.Handler>
+M.handlers = function()
+  if handlers then
+    return handlers
   end
-
-  client.handlers["sts/javadoc"] = function(_, result)
-    return jdtls.execute_command("sts.java.javadoc", result)
+  handlers = {}
+  for method, command in pairs(commands) do
+    handlers[method] = function(_, result)
+      return require("spring_boot.jdtls").execute_command(command, result)
+    end
   end
-
-  client.handlers["sts/javaSearchTypes"] = function(_, result)
-    return jdtls.execute_command("sts.java.search.types", result)
-  end
-
-  client.handlers["sts/javaSearchPackages"] = function(_, result)
-    return jdtls.execute_command("sts.java.search.packages", result)
-  end
-
-  client.handlers["sts/javaSubTypes"] = function(_, result)
-    return jdtls.execute_command("sts.java.hierarchy.subtypes", result)
-  end
-
-  client.handlers["sts/javaSuperTypes"] = function(_, result)
-    return jdtls.execute_command("sts.java.hierarchy.supertypes", result)
-  end
-
-  client.handlers["sts/javaCodeComplete"] = function(_, result)
-    return jdtls.execute_command("sts.java.code.completions", result)
-  end
-
-  client.handlers["sts/project/gav"] = function(_, result)
-    return jdtls.execute_command("sts.project.gav", result)
-  end
+  return handlers
 end
 
 return M
