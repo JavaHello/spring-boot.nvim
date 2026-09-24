@@ -43,19 +43,18 @@ local function find_symbols(choice)
 end
 
 local function cache_command(args)
-  local dir = require("spring_boot.cache").dir()
-  local entries = require("spring_boot.cache").entry_count(dir)
-  if entries == 0 then
-    vim.notify("spring_boot: no symbol cache at " .. dir, vim.log.levels.INFO)
-    return
-  end
-  if not args.bang then
+  local cache = require("spring_boot.cache")
+  local dir = cache.dir()
+  local entries = cache.entry_count(dir)
+  if entries > 0 and not args.bang then
     local answer = vim.fn.confirm(("Delete %d symbol cache files from %s?"):format(entries, dir), "&Yes\n&No", 2)
     if answer ~= 1 then
       return
     end
   end
-  local ok, message = require("spring_boot.cache").clear()
+  -- Without a cache to delete this still restarts the client, which is what
+  -- makes a server that indexed from a bad cache useful again.
+  local ok, message = cache.clear()
   vim.notify("spring_boot: " .. message, ok and vim.log.levels.INFO or vim.log.levels.WARN)
 end
 

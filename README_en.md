@@ -167,6 +167,8 @@ Clear it and let the server index the sources again:
 :SpringBootClearCache!   " no confirmation
 ```
 
+The command stops the client, deletes the cache, starts the client again and repeats the classpath handshake — so it also re-indexes when the cache directory is already empty (a server whose index is stale while the files on disc are gone). The sources are parsed again, and beans/endpoints come back within seconds to tens of seconds.
+
 Deleting it by hand requires the client to be stopped first (quit Neovim, then delete), otherwise a running server writes the empty result it holds straight back. The same goes for another Neovim session (or VS Code) holding the same project: close those first, or run the same command there. To avoid the cache entirely, turn it off:
 
 ```lua

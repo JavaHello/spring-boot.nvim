@@ -37,16 +37,14 @@ end
 --- server never learns about the project's classpath and indexes nothing, so
 --- the handshake it is waiting for is repeated here. Asking twice is harmless:
 --- the server ignores the command while listening already.
----@return boolean started
+---
+--- The client has to be initialized for this to stick — at that point
+--- `get_spring_boot_client()` finds it.
+---@return boolean sent
 local function request_classpath_listening()
   local util = require("spring_boot.util")
-  -- The client is started asynchronously and answers the command only once
-  -- initialized, which is also when `get_spring_boot_client()` finds it.
-  local ready = vim.wait(5000, function()
-    local client = util.get_spring_boot_client()
-    return client ~= nil and client.initialized ~= nil
-  end, 100)
-  if not ready then
+  local client = util.get_spring_boot_client()
+  if not (client and client.initialized) then
     return false
   end
   -- A callback, so the send never yields: this runs from a user command.
@@ -73,38 +71,64 @@ end
 M.clear = function()
   local dir = M.dir()
   local entries = M.entry_count(dir)
-  if entries == 0 then
-    return false, ("no symbol cache at %s"):format(dir)
+
+  if not vim.lsp.is_enabled("spring-boot") then
+    if entries == 0 then
+      return false, ("no symbol cache at %s"):format(dir)
+    end
+    local ok, err = pcall(vim.fn.delete, dir, "rf")
+    return ok,
+      ok and ("removed %d symbol cache files from %s"):format(entries, dir)
+        or ("could not delete %s: %s"):format(dir, err)
   end
 
-  local enabled = vim.lsp.is_enabled("spring-boot")
-  if enabled then
-    vim.lsp.enable("spring-boot", false)
-    -- Let the clients detach before deleting what they may still hold.
-    vim.wait(1000, function()
-      return #vim.lsp.get_clients({ name = "spring-boot" }) == 0
-    end)
+  local function remove()
+    return pcall(vim.fn.delete, dir, "rf")
   end
 
-  local ok, err = pcall(vim.fn.delete, dir, "rf")
+  -- Stop the client first: a server that is still running answers from the
+  -- symbols it read and stores them back, so a cache deleted underneath it
+  -- reappears.
+  vim.lsp.enable("spring-boot", false)
+  -- Let the clients detach before deleting what they may still hold.
+  vim.wait(1000, function()
+    return #vim.lsp.get_clients({ name = "spring-boot" }) == 0
+  end)
 
-  -- The client is brought back whatever the deletion did: it was stopped to
-  -- free the cache, and leaving it stopped would cost more than the files.
-  local restarted = true
-  if enabled then
-    -- Starts on the buffers that are open, so the index is rebuilt right away.
-    vim.lsp.enable("spring-boot")
-    restarted = request_classpath_listening()
+  local removed = true
+  if entries > 0 then
+    removed = remove()
   end
 
-  if not ok then
-    return false, ("could not delete %s: %s"):format(dir, err)
+  -- Starts again on the buffers that are open, and waits for it to answer: the
+  -- handshake below needs an initialized client, and the cache is dropped a
+  -- second time once it is up.
+  vim.lsp.enable("spring-boot")
+  local started = vim.wait(10000, function()
+    local client = require("spring_boot.util").get_spring_boot_client()
+    return client ~= nil and client.initialized ~= nil
+  end, 100)
+
+  -- The server that was just stopped can still be on its way out and write the
+  -- symbols it held back to disc *after* the first deletion. Left there, they
+  -- would be exactly the entries this command is meant to drop, and the fresh
+  -- server would trust them instead of scanning. Anything written before this
+  -- moment is dropped, and nothing is written from here on: the new server
+  -- only scans once it is told to listen for the classpath.
+  if started and entries > 0 then
+    remove()
   end
-  local removed = ("removed %d symbol cache files from %s"):format(entries, dir)
-  if not restarted then
-    return true, removed .. "; the language server did not come back up, reopen a Java or configuration buffer"
+
+  local what = entries > 0 and ("removed %d symbol cache files from %s"):format(entries, dir)
+    or ("no symbol cache at %s"):format(dir)
+  if not removed then
+    return false, ("could not delete %s"):format(dir)
   end
-  return true, removed .. ", re-indexing"
+  if not started then
+    return true, what .. "; the language server did not come back up, reopen a Java or configuration buffer"
+  end
+  return true,
+    what .. (request_classpath_listening() and ", re-indexing" or ", re-open a Java or configuration buffer")
 end
 
 return M
