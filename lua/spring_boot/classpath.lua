@@ -10,29 +10,57 @@ local M = {}
 --- and the listener is registered either way.
 local LISTENER_TIMEOUT_MS = 8000
 
---- Clients the settings have already been re-sent to, by client id.
-local settings_pushed = {} ---@type table<integer, boolean>
+--- How long the classpath events have to stay quiet before the settings are
+--- sent, and how many bursts per client are answered with a settings push.
+local SETTLE_MS = 1500
+local MAX_PUSHES = 2
 
---- Re-sends the settings once the project data is on its way in.
+--- Per client: the number of the last classpath event seen, and how many
+--- times the settings have been sent for it.
+local bursts = {} ---@type table<integer, { generation: integer, count: integer }>
+
+--- Sends the settings once a burst of classpath events has gone quiet.
 ---
 --- The settings sent at initialization reach a server that knows no projects
---- yet, so nothing gets indexed from that call. With the projects present it
---- also makes the server index them from source (`initializeProject(project,
---- clean = true)`), which is what repairs an index built from cache entries
---- that claim a project holds no symbols. See |spring_boot.settings|.
-local function push_settings_after_projects()
+--- yet, so nothing gets indexed from that call. With the projects present the
+--- notification instead makes the server index them from source
+--- (`SpringSymbolIndex.configurationChanged` → `initializeProject(project,
+--- clean = true)`), which is what repairs a cache entry claiming a project
+--- holds no symbols. See |spring_boot.settings|.
+---
+--- That makes the timing matter: the server registers one project per event,
+--- and a project it registers *after* the notification is indexed from its
+--- cache entry instead — a bad entry then keeps that project empty for good.
+--- Waiting for the quiet puts the notification after the last project of a
+--- burst; the wait is re-armed by every event, so a staggered burst is covered
+--- as well. The budget keeps later bursts (a changed `pom.xml`, say) from
+--- re-indexing every project again — those carry new cache keys anyway, so
+--- their sources are parsed regardless.
+local function push_settings_when_settled()
   local util = require("spring_boot.util")
   local client = util.get_spring_boot_client()
-  if not client or settings_pushed[client.id] then
+  if not client then
     return
   end
-  settings_pushed[client.id] = true
-  -- Deferred, so the events handed over below have created the projects.
+  local burst = bursts[client.id]
+  if not burst then
+    burst = { generation = 0, count = 0 }
+    bursts[client.id] = burst
+  end
+  if burst.count >= MAX_PUSHES then
+    return
+  end
+  burst.generation = burst.generation + 1
+  local generation = burst.generation
   vim.defer_fn(function()
-    if not client:is_stopped() then
-      require("spring_boot.settings").push(client)
+    local current = bursts[client.id]
+    if not current or current.generation ~= generation or client:is_stopped() then
+      -- Another event is still waiting for its own quiet, or the client is gone.
+      return
     end
-  end, 500)
+    current.count = current.count + 1
+    require("spring_boot.settings").push(client)
+  end, SETTLE_MS)
 end
 
 local handlers
@@ -55,7 +83,7 @@ M.handlers = function()
       local callbackCommandId = result.callbackCommandId
       vim.lsp.commands[callbackCommandId] = function(param, _)
         local forwarded = require("spring_boot.util").boot_execute_command(callbackCommandId, param)
-        push_settings_after_projects()
+        push_settings_when_settled()
         return forwarded
       end
       return require("spring_boot.jdtls").execute_command(

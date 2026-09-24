@@ -160,7 +160,7 @@ require("lspconfig").jdtls.setup {
 
 语言服务器把每个项目的符号缓存在 `~/.sts4/.symbolCache`（按「项目 + classpath」记录每个文件的符号），启动时只要缓存条目是「新鲜」的就不再解析源码。一旦某个条目记成「这些文件已索引、结果为空」，服务端会一直信任它——该项目的 `Bean`、`Endpoint` 以及配置属性校验会一起消失，直到源文件被改动或 classpath 变化。
 
-插件因此和 VS Code、Eclipse STS 一样，在客户端就绪、以及项目数据开始流入之后各推送一次设置（`workspace/didChangeConfiguration`）。这个通知会让服务端**重新按源码索引全部项目**（`SpringSymbolIndex` 收到后调用 `initializeProject(project, clean = true)`，绕过缓存），所以坏条目在启动后几秒内就会被自动纠正，不需要手工清理。
+插件因此和 VS Code、Eclipse STS 一样推送设置（`workspace/didChangeConfiguration`）：客户端就绪时一次，之后在这批 classpath 事件安静下来再推一次。这个通知会让服务端**重新按源码索引它当时已知的全部项目**（`SpringSymbolIndex` 收到后调用 `initializeProject(project, clean = true)`，绕过缓存），所以坏条目在启动后几秒内就会被自动纠正，不需要手工清理。第二次要等到事件安静才推送：服务端每收到一个项目才注册一个，推早了，之后才注册的项目仍会命中坏缓存。
 
 如果确实想绕开这个缓存，可以用 `jvm_args` 传服务端自己的开关：
 

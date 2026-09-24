@@ -160,7 +160,7 @@ The server's own log is discarded by default; when debugging a failed start, set
 
 The server caches each project's symbols in `~/.sts4/.symbolCache` (per project and classpath, keyed by file). As long as an entry is "fresh" the server does not parse those sources again — and once an entry records a file list with no symbols, it trusts it: that project's beans, endpoints and configuration-property diagnostics all stay empty until a source file changes or the classpath does.
 
-So, like VS Code and Eclipse STS, the plugin sends its settings (`workspace/didChangeConfiguration`) once the client is up and again once the project data starts flowing. That notification makes the server index every project from source again — `SpringSymbolIndex` answers it with `initializeProject(project, clean = true)`, which bypasses the cache — so a bad entry is corrected on its own within seconds of starting, with nothing to clean by hand.
+So, like VS Code and Eclipse STS, the plugin sends its settings (`workspace/didChangeConfiguration`): once the client is up, and once the classpath events of the initial burst have gone quiet. That notification makes the server index every project it knows from source again — `SpringSymbolIndex` answers it with `initializeProject(project, clean = true)`, which bypasses the cache — so a bad entry is corrected on its own within seconds of starting, with nothing to clean by hand. The second send waits for the quiet because the server registers one project per classpath event: sent any earlier, the projects registering after it would still be indexed from their bad cache entry.
 
 If you want to sidestep the cache anyway, the server's own switch can be passed through `jvm_args`:
 
