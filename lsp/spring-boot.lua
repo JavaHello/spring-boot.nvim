@@ -70,7 +70,11 @@ return {
     if type(params.initializationOptions) ~= "table" then
       params.initializationOptions = {}
     end
-    params.initializationOptions.workspaceFolders = config.root_dir
+    -- The server reads this as an array of folder URIs
+    -- (`SimpleLanguageServer.getWorkspaceFolders`) — the shape the vscode
+    -- client sends. Any other shape is ignored and the server falls back to
+    -- the single `rootUri` instead.
+    params.initializationOptions.workspaceFolders = config.root_dir and { vim.uri_from_fname(config.root_dir) } or nil
   end,
 
   get_language_id = function(bufnr, filetype)
