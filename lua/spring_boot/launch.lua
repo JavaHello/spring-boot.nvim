@@ -7,14 +7,18 @@ local M = {}
 M.root_markers = { ".git", "mvnw", "gradlew" }
 
 --- Resolves the log file, letting the user derive it from the workspace root.
+--- A callback that raises or returns nothing falls back to the default, so a
+--- mistyped one cannot break the command line it ends up in.
 ---@param opts bootls.Config
 ---@param root_dir? string
 ---@return string
 M.logfile = function(opts, root_dir)
   local log_file = opts.log_file
   if type(log_file) == "function" then
-    return log_file(root_dir)
-  elseif type(log_file) == "string" then
+    local ok, resolved = pcall(log_file, root_dir)
+    log_file = ok and resolved or nil
+  end
+  if type(log_file) == "string" and log_file ~= "" then
     return log_file
   end
   return util.is_win and "NUL" or "/dev/null"

@@ -190,6 +190,21 @@ end
 --- `<modules>` while the dependency itself lives in the modules. The search is
 --- breadth-first, so the root's own build files are always read first, and it
 --- is bounded in both depth and number of files read.
+---@param dir string
+---@return string[]? # nil when the directory cannot be listed
+local function subdirectories(dir)
+  local ok, entries = pcall(function()
+    local found = {}
+    for entry, kind in vim.fs.dir(dir) do
+      if kind == "directory" then
+        found[#found + 1] = entry
+      end
+    end
+    return found
+  end)
+  return ok and entries or nil
+end
+
 ---@param root_dir string
 ---@return boolean
 M.has_spring_boot_dependency = function(root_dir)
@@ -212,8 +227,10 @@ M.has_spring_boot_dependency = function(root_dir)
       end
     end
     if current.depth < MAX_DEPTH then
-      for entry, kind in vim.fs.dir(current.dir) do
-        if kind == "directory" and entry:sub(1, 1) ~= "." and not IGNORED_DIRS[entry] then
+      -- A directory that cannot be listed is skipped rather than raised from:
+      -- this runs on every `root_dir` call, where raising costs the client.
+      for _, entry in ipairs(subdirectories(current.dir) or {}) do
+        if entry:sub(1, 1) ~= "." and not IGNORED_DIRS[entry] then
           queue[#queue + 1] = { dir = vim.fs.joinpath(current.dir, entry), depth = current.depth + 1 }
         end
       end

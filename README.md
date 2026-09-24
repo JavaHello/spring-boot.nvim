@@ -125,9 +125,16 @@ require("lspconfig").jdtls.setup {
 
 ## 使用
 
-- 查找使用了 `Spring` 注解的 `Bean`。
-  此功能利用 LSP 工作区符号。您可以使用您偏好的、支持显示 LSP 工作区符号的模糊查找器。
-  例如：
+- 查找使用了 `Spring` 注解的 `Bean`、`Web Endpoints` 等，插件自带命令：
+
+  ```vim
+  :SpringBoot              " 弹出选择：Annotations / Beans / RequestMappings / Prototype
+  :SpringBoot Beans        " 直接查询，支持补全
+  ```
+
+  对应的服务端查询语法：`Annotations` → `@`，`Beans` → `@+`，`RequestMappings` → `@/`，`Prototype` → `@>`。结果通过 `vim.ui.select` 展示（因此您使用的选取器插件决定 UI）。
+
+  也可以自己用模糊查找器查询 LSP 工作区符号，此时请带上查询前缀：
   - 如果您正在使用 `fzf-lua`：
     ```vim
     :FzfLua lsp_live_workspace_symbols
@@ -148,3 +155,24 @@ require("lspconfig").jdtls.setup {
 会依次检查 `java` 可执行文件、语言服务器路径（及 mason / vscode 扩展两个来源）、jdtls 扩展 jar、`$MASON`、配置是否已启用，以及当前运行中的客户端及其 `root_dir`。
 
 服务端自身的日志默认丢弃，排查启动失败时建议先按上面的例子设置 `log_file` 和 `log_level = "debug"`。
+
+### `Bean` / `Endpoint` 突然查不到
+
+如果 `:SpringBoot`（或工作区符号）突然变空、`application.yml` 也同时不再校验，多半是语言服务器的**符号缓存**出了问题，而不是插件：缓存默认在 `~/.sts4/.symbolCache`，里面按「项目 + classpath」保存每个文件的符号。一旦某个条目记成「这些文件已索引、结果为空」，服务端就会信任它而**跳过解析**——该项目的 `Bean`、`Endpoint` 以及配置属性校验会一起消失，直到源文件被改动或 classpath 变化。
+
+清掉缓存并让服务端重新索引：
+
+```vim
+:SpringBootClearCache    " 确认后清理（会先停客户端、删缓存、再重新启动）
+:SpringBootClearCache!   " 跳过确认
+```
+
+注意手工删除时要在客户端停止之后进行（先退出 Neovim 再删），否则运行中的服务端会把内存里那份空结果写回缓存。同理，如果同一项目在别的 Neovim 会话（或 VS Code）里也开着，那边的服务端也可能把它手里的空结果写回来——先关掉那些会话，或者在那里也执行一次同样的操作。想彻底避开这个缓存，可以关掉它：
+
+```lua
+opts = {
+  jvm_args = { "-Dlanguageserver.boot.symbol-cache-enabled=false" },
+}
+```
+
+代价是每次启动都要重新解析一遍源码；缓存目录也可以用 `-Dlanguageserver.boot.symbol-cache-dir=<dir>` 改到别处。

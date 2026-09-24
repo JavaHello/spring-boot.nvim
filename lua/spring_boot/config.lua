@@ -1,7 +1,7 @@
 ---@class bootls.Config
 ---@field ls_path? string The path to the language server jar, or to an exploded jar directory (`BOOT-INF/`). When nil it is discovered from mason-registry, then from the vscode extension directory.
 ---@field java_cmd? string The path to the java command. Defaults to `$JAVA_HOME/bin/java`, then `java`.
----@field log_file? string|fun(root_dir: string?): string The path to the spring boot ls log file. Defaults to `/dev/null` (logging disabled). `root_dir` is nil when the workspace root is not known yet.
+---@field log_file? string|fun(root_dir: string?): string? The path to the spring boot ls log file. Defaults to `/dev/null` (logging disabled), and so does a callback that returns nothing. `root_dir` is nil when the workspace root is not known yet.
 ---@field log_level? string The root logging level of the language server. Defaults to `warn`.
 ---@field jvm_args? string[] Extra JVM arguments appended to the server command line.
 ---@field jars? string[] Explicit jdtls extension jars, skipping discovery. See |spring_boot.java_extensions()|.

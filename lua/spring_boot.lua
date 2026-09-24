@@ -191,6 +191,10 @@ M.setup = function(opts)
   M.register_client_commands()
   M.init_lsp_commands()
 
+  -- `:SpringBoot` (symbol queries) and `:SpringBootClearCache`. See
+  -- |spring_boot.commands|.
+  require("spring_boot.commands").register()
+
   -- Options may have changed, so workspaces are re-judged by `project_filter`.
   require("spring_boot.launch").clear_project_filter_cache()
 
@@ -205,13 +209,18 @@ M.setup = function(opts)
 end
 
 M.java_extensions = function(jar_paths)
+  -- `jars` from the configuration is consulted before the memoized lookup, so
+  -- setting it in `setup()` still takes effect when this ran earlier — the
+  -- discovery is what gets memoized, not the configured value. See
+  -- |:checkhealth spring_boot|, which calls this.
+  local configured = require("spring_boot.config").jars
+  if configured and #configured > 0 then
+    return configured
+  end
   if spring_boot.jdt_expanded_extensions_jars and #spring_boot.jdt_expanded_extensions_jars > 0 then
     return spring_boot.jdt_expanded_extensions_jars
   end
-  local bundles = require("spring_boot.config").jars
-  if not bundles or #bundles == 0 then
-    bundles = M.get_jars(jar_paths)
-  end
+  local bundles = M.get_jars(jar_paths)
   if #bundles > 0 then
     spring_boot.jdt_expanded_extensions_jars = bundles
   end

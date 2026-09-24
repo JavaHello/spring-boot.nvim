@@ -125,9 +125,16 @@ require("lspconfig").jdtls.setup {
 
 ## Usage
 
-- Find Beans using Spring annotations:
-  This feature leverages LSP workspace symbols. You can use your preferred fuzzy finder that supports displaying LSP workspace symbols.
-  For example:
+- Find Beans using Spring annotations, Web Endpoints and more with the command the plugin ships:
+
+  ```vim
+  :SpringBoot              " prompts: Annotations / Beans / RequestMappings / Prototype
+  :SpringBoot Beans        " query directly, completion included
+  ```
+
+  The server query behind each choice: `Annotations` → `@`, `Beans` → `@+`, `RequestMappings` → `@/`, `Prototype` → `@>`. Results are shown through `vim.ui.select`, so your picker plugin decides the UI.
+
+  You can also query LSP workspace symbols yourself with a fuzzy finder — pass the query prefix then:
   - If you are using `fzf-lua`:
     ```vim
     :FzfLua lsp_live_workspace_symbols
@@ -148,3 +155,24 @@ require("lspconfig").jdtls.setup {
 Reports the `java` executable, the resolved language server path (plus both discovery sources: mason and the vscode extension), the jdtls extension jars, `$MASON`, whether the config is enabled, and the running clients with their `root_dir`.
 
 The server's own log is discarded by default; when debugging a failed start, set `log_file` and `log_level = "debug"` as shown above.
+
+### Beans / endpoints suddenly missing
+
+When `:SpringBoot` (or workspace symbols) goes empty and `application.yml` stops being validated at the same time, it is usually the language server's **symbol cache** rather than the plugin: it lives in `~/.sts4/.symbolCache` and stores each project's symbols per file. Once an entry records a file list with no symbols, the server trusts it and **skips parsing** — that project's beans, endpoints and configuration-property diagnostics all disappear until a source file changes or the classpath does.
+
+Clear it and let the server index the sources again:
+
+```vim
+:SpringBootClearCache    " asks for confirmation, then stops the client, deletes the cache and starts it again
+:SpringBootClearCache!   " no confirmation
+```
+
+Deleting it by hand requires the client to be stopped first (quit Neovim, then delete), otherwise a running server writes the empty result it holds straight back. The same goes for another Neovim session (or VS Code) holding the same project: close those first, or run the same command there. To avoid the cache entirely, turn it off:
+
+```lua
+opts = {
+  jvm_args = { "-Dlanguageserver.boot.symbol-cache-enabled=false" },
+}
+```
+
+The cost is parsing the sources on every start; the directory can also be moved with `-Dlanguageserver.boot.symbol-cache-dir=<dir>`.
