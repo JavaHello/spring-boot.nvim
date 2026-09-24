@@ -156,18 +156,9 @@ require("lspconfig").jdtls.setup {
 
 服务端自身的日志默认丢弃，排查启动失败时建议先按上面的例子设置 `log_file` 和 `log_level = "debug"`。
 
-### 索引与符号缓存
+### 没有 `Bean` / `Endpoint` / 属性提示
 
-语言服务器把每个项目的符号缓存在 `~/.sts4/.symbolCache`（按「项目 + classpath」记录每个文件的符号），启动时只要缓存条目是「新鲜」的就不再解析源码。一旦某个条目记成「这些文件已索引、结果为空」，服务端会一直信任它——该项目的 `Bean`、`Endpoint` 以及配置属性校验会一起消失，直到源文件被改动或 classpath 变化。
+插件会和 VS Code、Eclipse STS 一样推送设置，服务端收到后会重新按源码索引一遍（绕过符号缓存），因此不需要手工清理什么。如果依旧为空，说明服务端拿到的项目 classpath 不完整（机制见 `lua/spring_boot/settings.lua` 的注释），清空该项目的 jdtls 工作区再重启即可：
 
-插件因此和 VS Code、Eclipse STS 一样推送设置（`workspace/didChangeConfiguration`）：客户端就绪时一次，之后在这批 classpath 事件安静下来再推一次。这个通知会让服务端**重新按源码索引它当时已知的全部项目**（`SpringSymbolIndex` 收到后调用 `initializeProject(project, clean = true)`，绕过缓存），所以坏条目在启动后几秒内就会被自动纠正，不需要手工清理。第二次要等到事件安静才推送：服务端每收到一个项目才注册一个，推早了，之后才注册的项目仍会命中坏缓存。
-
-如果确实想绕开这个缓存，可以用 `jvm_args` 传服务端自己的开关：
-
-```lua
-opts = {
-  jvm_args = { "-Dlanguageserver.boot.symbol-cache-enabled=false" },
-}
-```
-
-代价是每次启动重新解析一遍源码。缓存目录也可以用 `-Dlanguageserver.boot.symbol-cache-dir=<dir>` 改到别处。
+- `nvim-jdtls`：`:JdtWipeDataAndRestart`
+- 其他接入方式：`ps -eo command | grep -o -- '-data [^ ]*'` 查出目录后删除

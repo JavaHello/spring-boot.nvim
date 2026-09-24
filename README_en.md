@@ -156,18 +156,9 @@ Reports the `java` executable, the resolved language server path (plus both disc
 
 The server's own log is discarded by default; when debugging a failed start, set `log_file` and `log_level = "debug"` as shown above.
 
-### Index and symbol cache
+### No beans, endpoints or property hints
 
-The server caches each project's symbols in `~/.sts4/.symbolCache` (per project and classpath, keyed by file). As long as an entry is "fresh" the server does not parse those sources again — and once an entry records a file list with no symbols, it trusts it: that project's beans, endpoints and configuration-property diagnostics all stay empty until a source file changes or the classpath does.
+Like VS Code and Eclipse STS, the plugin pushes its settings; the server answers by indexing every project from source again (bypassing the symbol cache), so nothing has to be cleaned by hand. If it is still empty, the project classpath the server received is incomplete (the mechanism is in the comment on `lua/spring_boot/settings.lua`). Wipe the project's jdtls workspace and restart:
 
-So, like VS Code and Eclipse STS, the plugin sends its settings (`workspace/didChangeConfiguration`): once the client is up, and once the classpath events of the initial burst have gone quiet. That notification makes the server index every project it knows from source again — `SpringSymbolIndex` answers it with `initializeProject(project, clean = true)`, which bypasses the cache — so a bad entry is corrected on its own within seconds of starting, with nothing to clean by hand. The second send waits for the quiet because the server registers one project per classpath event: sent any earlier, the projects registering after it would still be indexed from their bad cache entry.
-
-If you want to sidestep the cache anyway, the server's own switch can be passed through `jvm_args`:
-
-```lua
-opts = {
-  jvm_args = { "-Dlanguageserver.boot.symbol-cache-enabled=false" },
-}
-```
-
-The cost is parsing the sources on every start. The directory can also be moved with `-Dlanguageserver.boot.symbol-cache-dir=<dir>`.
+- `nvim-jdtls`: `:JdtWipeDataAndRestart`
+- Otherwise: `ps -eo command | grep -o -- '-data [^ ]*'`, then delete that directory
