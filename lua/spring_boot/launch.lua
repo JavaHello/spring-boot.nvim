@@ -1,120 +1,149 @@
-local classpath = require("spring_boot.classpath")
-local java_data = require("spring_boot.java_data")
-local ls_config = require("spring_boot.ls_config")
 local util = require("spring_boot.util")
-local uv = vim.uv or vim.loop
+local uv = vim.uv
+
 local M = {}
 
-M.root_dir = function()
-  return vim.fs.root(0, { ".git", "mvnw", "gradlew" }) or uv.cwd()
-end
+--- Markers used to find the workspace root, in decreasing priority.
+M.root_markers = { ".git", "mvnw", "gradlew" }
 
+--- Resolves the log file, letting the user derive it from the workspace root.
+--- A callback that raises or returns nothing falls back to the default, so a
+--- mistyped one cannot break the command line it ends up in.
 ---@param opts bootls.Config
-M.logfile = function(opts)
-  local lf
-  if opts.log_file ~= nil then
-    if type(opts.log_file) == "function" then
-      lf = opts.log_file(opts.server.root_dir)
-    elseif type(opts.log_file) == "string" then
-      lf = opts.log_file
-    end
+---@param root_dir? string
+---@return string
+M.logfile = function(opts, root_dir)
+  local log_file = opts.log_file
+  if type(log_file) == "function" then
+    local ok, resolved = pcall(log_file, root_dir)
+    log_file = ok and resolved or nil
   end
-  return lf or "/dev/null"
+  if type(log_file) == "string" and log_file ~= "" then
+    return log_file
+  end
+  return util.is_win and "NUL" or "/dev/null"
 end
 
-M.bootls_cmd = function(config)
-  if config.exploded_ls_jar_data then
-    local boot_classpath = {}
-    table.insert(boot_classpath, config.ls_path .. "/BOOT-INF/classes")
-    table.insert(boot_classpath, config.ls_path .. "/BOOT-INF/lib/*")
+--- An exploded jar is a directory containing `BOOT-INF/`.
+---@param ls_path string
+---@return boolean
+M.is_exploded = function(ls_path)
+  return vim.fn.isdirectory(ls_path .. "/BOOT-INF") ~= 0
+end
 
-    return {
-      config.java_cmd or util.java_bin(),
-      "-XX:TieredStopAtLevel=1",
-      "-Xmx1G",
-      "-XX:+UseZGC",
+--- Builds the language server command line, or nil when no server was found.
+---@param opts bootls.Config
+---@param root_dir? string
+---@return string[]|nil
+M.bootls_cmd = function(opts, root_dir)
+  local ls_path = opts.ls_path
+  if not ls_path then
+    return nil
+  end
+
+  local log_file = M.logfile(opts, root_dir)
+  local cmd = vim.list_extend({
+    opts.java_cmd or util.java_bin(),
+    "-XX:TieredStopAtLevel=1",
+    "-Xmx1G",
+    "-XX:+UseZGC",
+  }, opts.jvm_args or {})
+
+  vim.list_extend(cmd, {
+    "-Dsts.lsp.client=vscode",
+    "-Dsts.log.file=" .. log_file,
+  })
+
+  if M.is_exploded(ls_path) then
+    vim.list_extend(cmd, {
       "-cp",
-      table.concat(boot_classpath, util.is_win and ";" or ":"),
-      "-Dsts.lsp.client=vscode",
-      "-Dsts.log.file=" .. M.logfile(config),
-      "-Dspring.config.location=file:" .. config.ls_path .. "/BOOT-INF/classes/application.properties",
-      -- "-Dlogging.level.org.springframework=DEBUG",
+      table.concat({
+        ls_path .. "/BOOT-INF/classes",
+        ls_path .. "/BOOT-INF/lib/*",
+      }, util.is_win and ";" or ":"),
+      "-Dspring.config.location=file:" .. ls_path .. "/BOOT-INF/classes/application.properties",
       "org.springframework.ide.vscode.boot.app.BootLanguageServerBootApp",
-    }
+    })
   else
-    return {
-      config.java_cmd or util.java_bin(),
-      "-XX:TieredStopAtLevel=1",
-      "-Xmx1G",
-      "-XX:+UseZGC",
-      "-Dsts.lsp.client=vscode",
-      "-Dsts.log.file=" .. M.logfile(config),
+    vim.list_extend(cmd, {
       -- Fix appearance of LOG-FILE-UNDEFINED files
       -- https://github.com/spring-projects/spring-tools/commit/522acf1fa7fc074cbd24ffece25f3368ba5ebe4d
       "-Dspring.profiles.active=file-logging",
-      "-Dlogging.file.name=" .. M.logfile(config),
-      "-Dlogging.level.root=" .. (config.logLevel or "warn"),
+      "-Dlogging.file.name=" .. log_file,
+      "-Dlogging.level.root=" .. (opts.log_level or "warn"),
       "-jar",
-      config.ls_path,
-    }
+      ls_path,
+    })
   end
+  return cmd
 end
 
---- 使用 ftplugin 启动时，调用此方法
+--- Verdicts of `project_filter`, keyed by the predicate and then by workspace
+--- root. `root_dir()` runs on every FileType event and the predicate may read
+--- build files, so each workspace is judged once. The weak keys mean a
+--- predicate that is no longer referenced takes its verdicts with it.
+local filter_cache ---@type table<function, table<string, boolean>>
+
+--- Drops every memoized `project_filter` verdict, so workspaces are judged
+--- again on the next FileType event.
+M.clear_project_filter_cache = function()
+  filter_cache = setmetatable({}, { __mode = "k" })
+end
+M.clear_project_filter_cache()
+
 ---@param opts bootls.Config
----@return vim.lsp.ClientConfig
-M.update_ls_config = function(opts)
-  local client_config = vim.tbl_deep_extend("keep", opts.server, ls_config)
-  if not client_config.root_dir then
-    client_config.root_dir = M.root_dir()
+---@param root_dir string
+---@return boolean
+local function passes_project_filter(opts, root_dir)
+  local filter = opts.project_filter
+  if not filter then
+    return true
   end
-  if not client_config.cmd or #client_config.cmd == 0 then
-    if not opts.ls_path then
-      vim.notify("Spring Boot LS is not installed", vim.log.levels.WARN)
-      return {}
+  local verdicts = filter_cache[filter]
+  if not verdicts then
+    verdicts = {}
+    filter_cache[filter] = verdicts
+  end
+  if verdicts[root_dir] == nil then
+    local ok, result = pcall(filter, root_dir)
+    if not ok then
+      -- Fail open: a broken predicate should not silently disable the server.
+      vim.notify("spring_boot: project_filter failed: " .. tostring(result), vim.log.levels.WARN)
+      verdicts[root_dir] = true
+    else
+      verdicts[root_dir] = result and true or false
     end
-    client_config.cmd = M.bootls_cmd(opts)
   end
-  client_config.init_options.workspaceFolders = client_config.root_dir
-
-  classpath.register_classpath_service(client_config)
-  java_data.register_java_data_service(client_config)
-  vim.lsp.commands["vscode-spring-boot.ls.start"] = function(_, _, _)
-    util.boot_execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
-  end
-  return client_config
+  return verdicts[root_dir]
 end
 
-M.ls_autocmd = function(opts)
-  local current_ls_config = M.update_ls_config(opts)
-  local group = vim.api.nvim_create_augroup("spring_boot_ls", { clear = true })
-  vim.api.nvim_create_autocmd({ "FileType" }, {
-    group = group,
-    pattern = { "java", "yaml", "jproperties" },
-    desc = "Spring Boot Language Server",
-    callback = function(_)
-      M.start(current_ls_config)
-    end,
-  })
-end
-
-M.start = function(opts)
-  local buf = vim.api.nvim_get_current_buf()
-  local filename = vim.uri_from_bufnr(buf)
-  if vim.endswith(filename, "pom.xml") then
+--- Decides whether the language server should attach to `bufnr`, and to which
+--- workspace root.
+---
+--- This doubles as a gate: `on_dir` is deliberately never called for yaml or
+--- properties files that are not Spring Boot configuration, nor when no
+--- language server could be found, nor for a workspace rejected by
+--- `project_filter`. See |lsp-root_dir()|.
+---@param bufnr integer
+---@param on_dir fun(root_dir?: string)
+M.root_dir = function(bufnr, on_dir)
+  local opts = require("spring_boot.config")
+  if not opts.ls_path then
     return
   end
-  if vim.endswith(filename, ".yaml") or vim.endswith(filename, ".yml") then
-    if not util.is_application_yml_file(filename) then
-      return
-    end
+  local filename = vim.api.nvim_buf_get_name(bufnr)
+  local filetype = vim.bo[bufnr].filetype
+  if filetype == "yaml" and not util.is_application_yml_file(filename) then
+    return
   end
-  if "jproperties" == vim.bo[buf].filetype then
-    if not util.is_application_properties_file(filename) then
-      return
-    end
+  if filetype == "jproperties" and not util.is_application_properties_file(filename) then
+    return
   end
-  vim.lsp.start(opts)
+  local root_dir = vim.fs.root(bufnr, M.root_markers) or uv.cwd()
+  if not passes_project_filter(opts, root_dir) then
+    return
+  end
+  on_dir(root_dir)
 end
 
 -- 参考资料
