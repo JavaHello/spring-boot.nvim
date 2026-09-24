@@ -82,8 +82,11 @@ return {
   end,
 
   handlers = {
-    -- The server asking the editor to run a command, e.g. to enable classpath
-    -- listening. Handled on this client, so no global handler is needed.
+    -- The server asking the editor to run a command by id. The commands
+    -- themselves live in |vim.lsp.commands|, registered by
+    -- |spring_boot.setup()|: the one the Spring Boot LS depends on is sent by
+    -- the *jdtls* extension, so it never reaches this client. See
+    -- |spring_boot.register_client_commands()|.
     ["workspace/executeClientCommand"] = function(err, result, ctx, config)
       return require("spring_boot").execute_client_command(err, result, ctx, config)
     end,
@@ -104,11 +107,5 @@ return {
     ["sts/javaSuperTypes"] = handler("java_data", "sts/javaSuperTypes"),
     ["sts/javaCodeComplete"] = handler("java_data", "sts/javaCodeComplete"),
     ["sts/project/gav"] = handler("java_data", "sts/project/gav"),
-  },
-
-  commands = {
-    ["vscode-spring-boot.ls.start"] = function()
-      require("spring_boot.util").boot_execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
-    end,
   },
 }

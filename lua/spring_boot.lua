@@ -25,9 +25,10 @@ local M = {}
 --- a command, possibly on another server. The command is resolved through the
 --- client that sent the request, so per-client `commands` win.
 ---
---- `lsp/spring-boot.lua` registers this on the `spring-boot` client, which is
---- enough on its own. See |spring_boot.init_lsp_commands()| for the global
---- variant.
+--- `lsp/spring-boot.lua` registers this on the `spring-boot` client, which
+--- covers the Spring Boot LS itself. The commands jdtls sends to its own client
+--- need the global variant installed by |spring_boot.init_lsp_commands()|,
+--- unless nvim-jdtls already provided one.
 --- see https://github.com/mfussenegger/nvim-jdtls/blob/29255ea26dfb51ef0213f7572bff410f1afb002d/lua/jdtls.lua#L819
 ---@type lsp.Handler
 M.execute_client_command = function(_, params, ctx)
@@ -65,6 +66,28 @@ M.init_lsp_commands = function()
     return
   end
   vim.lsp.handlers["workspace/executeClientCommand"] = M.execute_client_command -- luacheck: ignore 122
+end
+
+--- Registers the commands a server asks the editor to run through
+--- `workspace/executeClientCommand`.
+---
+--- These belong in the global |vim.lsp.commands| and not in the `spring-boot`
+--- config's `commands`, because the one that matters here is sent by the *jdtls*
+--- extension, once jdtls has imported a Spring Boot project — so it is
+--- dispatched on the `jdtls` client, whose handler resolves commands against
+--- that client and the global table only. A `commands` entry on the
+--- `spring-boot` client is never consulted for it.
+---
+--- This is the start of the classpath handshake: the command makes the editor
+--- ask the language server to listen for classpath changes
+--- (`sts.vscode-spring-boot.enableClasspathListening`), and without it the
+--- server never learns the project's classpath — no beans, no endpoints, no
+--- `application.properties` / `.yml` properties.
+--- see https://github.com/spring-projects/sts4/blob/cfd10f0b53be0bfe107ca91ae0ad3df3038b1af2/headless-services/jdt-ls-extension/org.springframework.tooling.jdt.ls.extension/src/org/springframework/tooling/jdt/ls/extension/JdtLsExtensionPlugin.java
+M.register_client_commands = function()
+  vim.lsp.commands["vscode-spring-boot.ls.start"] = function()
+    require("spring_boot.util").boot_execute_command("sts.vscode-spring-boot.enableClasspathListening", { true })
+  end
 end
 
 M.get_ls_from_mason = function()
@@ -161,6 +184,12 @@ M.setup = function(opts)
     vim.notify("Spring Boot LS is not installed. Run :checkhealth spring_boot", vim.log.levels.WARN)
     return config
   end
+
+  -- The classpath handshake starts on jdtls' side, so both the handler and the
+  -- command have to be registered globally, before jdtls imports a Spring Boot
+  -- project. See |spring_boot.register_client_commands()|.
+  M.register_client_commands()
+  M.init_lsp_commands()
 
   -- Options may have changed, so workspaces are re-judged by `project_filter`.
   require("spring_boot.launch").clear_project_filter_cache()
