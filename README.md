@@ -156,20 +156,13 @@ require("lspconfig").jdtls.setup {
 
 服务端自身的日志默认丢弃，排查启动失败时建议先按上面的例子设置 `log_file` 和 `log_level = "debug"`。
 
-### `Bean` / `Endpoint` 突然查不到
+### 索引与符号缓存
 
-如果 `:SpringBoot`（或工作区符号）突然变空、`application.yml` 也同时不再校验，多半是语言服务器的**符号缓存**出了问题，而不是插件：缓存默认在 `~/.sts4/.symbolCache`，里面按「项目 + classpath」保存每个文件的符号。一旦某个条目记成「这些文件已索引、结果为空」，服务端就会信任它而**跳过解析**——该项目的 `Bean`、`Endpoint` 以及配置属性校验会一起消失，直到源文件被改动或 classpath 变化。
+语言服务器把每个项目的符号缓存在 `~/.sts4/.symbolCache`（按「项目 + classpath」记录每个文件的符号），启动时只要缓存条目是「新鲜」的就不再解析源码。一旦某个条目记成「这些文件已索引、结果为空」，服务端会一直信任它——该项目的 `Bean`、`Endpoint` 以及配置属性校验会一起消失，直到源文件被改动或 classpath 变化。
 
-清掉缓存并让服务端重新索引：
+插件因此和 VS Code、Eclipse STS 一样，在客户端就绪、以及项目数据开始流入之后各推送一次设置（`workspace/didChangeConfiguration`）。这个通知会让服务端**重新按源码索引全部项目**（`SpringSymbolIndex` 收到后调用 `initializeProject(project, clean = true)`，绕过缓存），所以坏条目在启动后几秒内就会被自动纠正，不需要手工清理。
 
-```vim
-:SpringBootClearCache    " 确认后清理（会先停客户端、删缓存、再重新启动）
-:SpringBootClearCache!   " 跳过确认
-```
-
-命令做的是「停客户端 → 删缓存 → 重新启动 → 重新触发 classpath 握手」，所以**即使缓存目录已经是空的，它也会重启客户端并重新索引**（缓存被手工删掉、而运行中的服务端索引还是坏的情况）。重启后服务端会重新解析源码，几秒到几十秒后 `Bean`/`Endpoint` 就会回来。
-
-注意手工删除时要在客户端停止之后进行（先退出 Neovim 再删），否则运行中的服务端会把内存里那份空结果写回缓存。同理，如果同一项目在别的 Neovim 会话（或 VS Code）里也开着，那边的服务端也可能把它手里的空结果写回来——先关掉那些会话，或者在那里也执行一次同样的操作。想彻底避开这个缓存，可以关掉它：
+如果确实想绕开这个缓存，可以用 `jvm_args` 传服务端自己的开关：
 
 ```lua
 opts = {
@@ -177,4 +170,4 @@ opts = {
 }
 ```
 
-代价是每次启动都要重新解析一遍源码；缓存目录也可以用 `-Dlanguageserver.boot.symbol-cache-dir=<dir>` 改到别处。
+代价是每次启动重新解析一遍源码。缓存目录也可以用 `-Dlanguageserver.boot.symbol-cache-dir=<dir>` 改到别处。

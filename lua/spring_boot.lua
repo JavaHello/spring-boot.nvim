@@ -191,8 +191,7 @@ M.setup = function(opts)
   M.register_client_commands()
   M.init_lsp_commands()
 
-  -- `:SpringBoot` (symbol queries) and `:SpringBootClearCache`. See
-  -- |spring_boot.commands|.
+  -- `:SpringBoot` symbol queries. See |spring_boot.commands|.
   require("spring_boot.commands").register()
 
   -- Options may have changed, so workspaces are re-judged by `project_filter`.

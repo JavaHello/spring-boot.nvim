@@ -10,6 +10,31 @@ local M = {}
 --- and the listener is registered either way.
 local LISTENER_TIMEOUT_MS = 8000
 
+--- Clients the settings have already been re-sent to, by client id.
+local settings_pushed = {} ---@type table<integer, boolean>
+
+--- Re-sends the settings once the project data is on its way in.
+---
+--- The settings sent at initialization reach a server that knows no projects
+--- yet, so nothing gets indexed from that call. With the projects present it
+--- also makes the server index them from source (`initializeProject(project,
+--- clean = true)`), which is what repairs an index built from cache entries
+--- that claim a project holds no symbols. See |spring_boot.settings|.
+local function push_settings_after_projects()
+  local util = require("spring_boot.util")
+  local client = util.get_spring_boot_client()
+  if not client or settings_pushed[client.id] then
+    return
+  end
+  settings_pushed[client.id] = true
+  -- Deferred, so the events handed over below have created the projects.
+  vim.defer_fn(function()
+    if not client:is_stopped() then
+      require("spring_boot.settings").push(client)
+    end
+  end, 500)
+end
+
 local handlers
 
 --- Handlers for the classpath listener requests the Spring Boot language
@@ -29,7 +54,9 @@ M.handlers = function()
     ["sts/addClasspathListener"] = function(_, result)
       local callbackCommandId = result.callbackCommandId
       vim.lsp.commands[callbackCommandId] = function(param, _)
-        return require("spring_boot.util").boot_execute_command(callbackCommandId, param)
+        local forwarded = require("spring_boot.util").boot_execute_command(callbackCommandId, param)
+        push_settings_after_projects()
+        return forwarded
       end
       return require("spring_boot.jdtls").execute_command(
         "sts.java.addClasspathListener",

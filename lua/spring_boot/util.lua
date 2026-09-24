@@ -53,7 +53,11 @@ local function boot_client_execute_command(client, command, param, callback)
   return resp
 end
 
-M.boot_ls_init = function(_, _)
+M.boot_ls_init = function(client, _)
+  -- The settings the reference clients send right after initialization; they
+  -- also make the server index from source instead of trusting its cache.
+  -- See |spring_boot.settings|.
+  require("spring_boot.settings").push(client)
   for _, co in ipairs(M._boot_command_co) do
     coroutine.resume(co)
   end

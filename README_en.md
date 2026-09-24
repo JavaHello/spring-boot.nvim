@@ -156,20 +156,13 @@ Reports the `java` executable, the resolved language server path (plus both disc
 
 The server's own log is discarded by default; when debugging a failed start, set `log_file` and `log_level = "debug"` as shown above.
 
-### Beans / endpoints suddenly missing
+### Index and symbol cache
 
-When `:SpringBoot` (or workspace symbols) goes empty and `application.yml` stops being validated at the same time, it is usually the language server's **symbol cache** rather than the plugin: it lives in `~/.sts4/.symbolCache` and stores each project's symbols per file. Once an entry records a file list with no symbols, the server trusts it and **skips parsing** — that project's beans, endpoints and configuration-property diagnostics all disappear until a source file changes or the classpath does.
+The server caches each project's symbols in `~/.sts4/.symbolCache` (per project and classpath, keyed by file). As long as an entry is "fresh" the server does not parse those sources again — and once an entry records a file list with no symbols, it trusts it: that project's beans, endpoints and configuration-property diagnostics all stay empty until a source file changes or the classpath does.
 
-Clear it and let the server index the sources again:
+So, like VS Code and Eclipse STS, the plugin sends its settings (`workspace/didChangeConfiguration`) once the client is up and again once the project data starts flowing. That notification makes the server index every project from source again — `SpringSymbolIndex` answers it with `initializeProject(project, clean = true)`, which bypasses the cache — so a bad entry is corrected on its own within seconds of starting, with nothing to clean by hand.
 
-```vim
-:SpringBootClearCache    " asks for confirmation, then stops the client, deletes the cache and starts it again
-:SpringBootClearCache!   " no confirmation
-```
-
-The command stops the client, deletes the cache, starts the client again and repeats the classpath handshake — so it also re-indexes when the cache directory is already empty (a server whose index is stale while the files on disc are gone). The sources are parsed again, and beans/endpoints come back within seconds to tens of seconds.
-
-Deleting it by hand requires the client to be stopped first (quit Neovim, then delete), otherwise a running server writes the empty result it holds straight back. The same goes for another Neovim session (or VS Code) holding the same project: close those first, or run the same command there. To avoid the cache entirely, turn it off:
+If you want to sidestep the cache anyway, the server's own switch can be passed through `jvm_args`:
 
 ```lua
 opts = {
@@ -177,4 +170,4 @@ opts = {
 }
 ```
 
-The cost is parsing the sources on every start; the directory can also be moved with `-Dlanguageserver.boot.symbol-cache-dir=<dir>`.
+The cost is parsing the sources on every start. The directory can also be moved with `-Dlanguageserver.boot.symbol-cache-dir=<dir>`.

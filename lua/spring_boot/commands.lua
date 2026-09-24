@@ -42,22 +42,6 @@ local function find_symbols(choice)
   vim.lsp.buf.workspace_symbol(entry.query)
 end
 
-local function cache_command(args)
-  local cache = require("spring_boot.cache")
-  local dir = cache.dir()
-  local entries = cache.entry_count(dir)
-  if entries > 0 and not args.bang then
-    local answer = vim.fn.confirm(("Delete %d symbol cache files from %s?"):format(entries, dir), "&Yes\n&No", 2)
-    if answer ~= 1 then
-      return
-    end
-  end
-  -- Without a cache to delete this still restarts the client, which is what
-  -- makes a server that indexed from a bad cache useful again.
-  local ok, message = cache.clear()
-  vim.notify("spring_boot: " .. message, ok and vim.log.levels.INFO or vim.log.levels.WARN)
-end
-
 --- Registers the user commands of the plugin. Safe to call more than once.
 M.register = function()
   vim.api.nvim_create_user_command("SpringBoot", function(args)
@@ -83,11 +67,6 @@ M.register = function()
         return entry.name
       end, SYMBOL_QUERIES)
     end,
-  })
-
-  vim.api.nvim_create_user_command("SpringBootClearCache", cache_command, {
-    desc = "Delete the language server's symbol cache and index the sources again",
-    bang = true,
   })
 end
 
